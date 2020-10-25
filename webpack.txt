@@ -1,0 +1,66 @@
+en un folder se crea el ambiente de trabajo con 
+npm init -y
+npm install webpack webpack-cli --save-dev
+npm install --save-dev style-loader css-loader
+npm install --save-dev file-loader
+
+se agregan 
+dist/index.html
+src/index.js
+src/style.css
+webpack.config.js
+
+se necesita esta linea en index.js para activar el css
+import './style.css';
+
+el htnml basico es
+  <!doctype html>
+  <html>
+   <head>
+     <title>Getting Started</title>
+   </head>
+   <body>
+    <script src="bundle.js"></script>
+   </body>
+  </html>
+
+el webpack.config.js basico es
+
+const path = require('path');
+
+module.exports = {
+  entry: './src/index.js',
+  output: {
+    filename: 'bundle.js',
+    path: path.resolve(__dirname, 'dist'),
+  },
+  module: {
+     rules: [
+       {
+         test: /\.css$/,
+         use: [
+           'style-loader',
+           'css-loader',
+         ],
+       },
+     ],
+   },
+};
+
+...en rules estan metidos todos los tipos de archivos que se quieren manejar en el proyecto. Los archivos mismos parten de la carpeta src/
+
+en package.json se reemplaza "main": "index.js" por
+
+  "private": true,
+
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack",
+    "dev": "webpack --mode=development"
+  },
+
+  para correr todo con 
+
+  npm run dev
+   
+en package.json van apareciendo las dependencies (llamadas por imports?)

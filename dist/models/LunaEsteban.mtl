@@ -1,0 +1,13 @@
+# Blender MTL File: 'nueva.blend'
+# Material Count: 1
+
+newmtl Material
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Kd 1.000000 0.976000 0.929000
+Ks 0.000000 0.000000 0.000000
+Ke 0.0 0.0 0.0
+Ni 1.450000
+d 1.000000
+illum 60
+map_Kd TexturaLuna.png
