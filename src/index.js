@@ -1,32 +1,19 @@
 import './style.css';
 import * as THREE from 'three';
-//import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+//import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import * as L from '../logic'
 import * as U from '../logic/utils'
 
+//var labelRenderer
 /*
 var raycaster = new THREE.Raycaster();
 var mouse = new THREE.Vector2();
 */
 
 // cubo setup
-const url = new URL(document.location)
-const searchParams = url.searchParams
-
-const queryParamInt = (paramName, defaultValue, min, max) => {
-  const clamp = v => {
-    const localMin = min !== undefined ? min : Number.MIN_SAFE_INTEGER
-    const localMax = max !== undefined ? max : Number.MAX_SAFE_INTEGER
-    return Math.max(localMin, Math.min(localMax, v))
-  }
-  if (!searchParams.has(paramName)) return clamp(defaultValue)
-  const valueString = searchParams.get(paramName)
-  const valueInteger = Number(valueString)
-  const value = Number.isInteger(valueInteger) ? valueInteger : defaultValue
-  return clamp(value)
-}
-
+/*
 const COLOUR_TABLE = {
   'U': new THREE.Color('blue'),
   'D': new THREE.Color('green'),
@@ -34,23 +21,14 @@ const COLOUR_TABLE = {
   'R': new THREE.Color('darkorange'),
   'F': new THREE.Color('yellow'),
   'B': new THREE.Color('ghostwhite'),
-  '-': new THREE.Color(0x282828)
+  '-': new THREE.Color(0x101010)
 }
+*/
 
-const CUBE_SIZE = 3 //queryParamInt('size', 3, 2, 5)
-const SPEED_MILLISECONDS = queryParamInt('speed', 750, 100, 1000)
-const NUM_RANDOM_MOVES = 1 //queryParamInt('moves', 25, 0, 1000)
-const DELAY_MS = queryParamInt('delay', 1000, 0, 5000)
-const AXES_ENABLED = searchParams.has('axes')
-
-const PIECE_MATERIAL = new THREE.MeshPhysicalMaterial({
-  color: 0xffffff,
-  vertexColors: THREE.FaceColors,
-  metalness: 0,
-  roughness: 0,
-  clearcoat: 1,
-  reflectivity: 1
-})
+const CUBE_SIZE = 3
+const SPEED_MILLISECONDS = 750
+const NUM_RANDOM_MOVES = 1
+const DELAY_MS = 1000
 
 const globals = {
   cube: undefined,
@@ -59,10 +37,11 @@ const globals = {
   scene: undefined,
   puzzleGroup: undefined,
   animationGroup: undefined,
-  //controls: undefined,
+  controls: undefined,
   clock: undefined,
   animationMixer: undefined,
-  cuboClick: undefined
+  cuboClick: undefined,
+  texturas: undefined
 }
 
 const makeRotationMatrix4 = rotationMatrix3 => {
@@ -97,37 +76,180 @@ const loadGeometry = url =>
       reject)
   })
 
-const setGeometryFaceColors = (piece, pieceGeometry) => {
-  const clonedPieceGeoemtry = pieceGeometry.clone()
-  clonedPieceGeoemtry.faces.forEach(face => {
-    face.color = COLOUR_TABLE['-']
-    
-    U.closeTo(face.normal.y, 1) && (
-      face.color = COLOUR_TABLE[piece.faces.up]
-    )
-    U.closeTo(face.normal.y, -1) && (face.color = COLOUR_TABLE[piece.faces.down])
-    U.closeTo(face.normal.x, -1) && (face.color = COLOUR_TABLE[piece.faces.left])
-    U.closeTo(face.normal.x, 1) && (face.color = COLOUR_TABLE[piece.faces.right])
-    U.closeTo(face.normal.z, 1) && (face.color = COLOUR_TABLE[piece.faces.front])
-    U.closeTo(face.normal.z, -1) && (face.color = COLOUR_TABLE[piece.faces.back])
-    
-  })
-  return clonedPieceGeoemtry
-}
-
 const createUiPieces = (cube, pieceGeometry) => {
+  globals.texturas = []
+  var i;
+  for (i=0; i < 6; i++) {
+    globals.texturas[i] = new THREE.TextureLoader().load( 'maps/tierra/' + i + '_800_low.jpg' );
+  }
   cube.forEach(piece => {
     const uiPiece = createUiPiece(piece, pieceGeometry)
+    //console.log(uiPiece.children[1].name)
     globals.puzzleGroup.add(uiPiece)
   })
 }
 
 const createUiPiece = (piece, pieceGeometry) => {
-  const pieceGeometryWithColors = setGeometryFaceColors(piece, pieceGeometry)
-  const uiPiece = new THREE.Mesh(pieceGeometryWithColors, PIECE_MATERIAL)
-  uiPiece.scale.set(0.5, 0.5, 0.5)
+  // CAMBIOS RADICALES ***********
+  const pieceGeometryWithColors = pieceGeometry.clone()
+  const materialFicha = new THREE.MeshPhysicalMaterial({
+    color: 0x101010,
+    metalness: 0,
+    roughness: 0,
+    clearcoat: 1,
+    reflectivity: 1
+  })
+  const uiPiece = new THREE.Group()
+  const marcoFicha = new THREE.Mesh(pieceGeometryWithColors, materialFicha)
+  marcoFicha.scale.set(0.5, 0.5, 0.5)
+  marcoFicha.name = 'marcoFicha'
+  uiPiece.add(marcoFicha) // uiPiece antes era un mesh, ahora seria un grpo ue contien unos meshes
   uiPiece.userData = piece.id
+  uiPiece.name = 'Ficha'
   resetUiPiece(uiPiece, piece)
+  //console.log(uiPiece.userData)
+  //console.log(uiPiece.position)
+
+  var textureSize = 800
+  var sumAbs = Math.abs(uiPiece.position.x) + Math.abs(uiPiece.position.y) + Math.abs(uiPiece.position.z);
+
+  //for (var i=0; i < sumAbs; i++){
+  // todas las fichas tienen al menos una cara
+  var cualCara
+  if (uiPiece.position.z == 1) cualCara = 0;
+  else if (uiPiece.position.x == 1) cualCara = 1;
+  else if (uiPiece.position.x == -1) cualCara = 2;
+  else if (uiPiece.position.z == -1) cualCara = 3;
+  else if (uiPiece.position.y == -1) cualCara = 4;
+  else if (uiPiece.position.y == 1) cualCara = 5;
+
+  var data = new Uint8Array( textureSize * textureSize * 3 );
+  var textura = new THREE.DataTexture( data, textureSize, textureSize, THREE.RGBFormat );
+  textura.minFilter = THREE.NearestFilter;
+  textura.magFilter = THREE.NearestFilter;
+  textura.needsUpdate = true;
+  data.fill(255)
+  //.log(data);
+
+  var planoA = new THREE.PlaneBufferGeometry( 0.86, 0.86 );
+  var materialA = new THREE.MeshPhysicalMaterial( {color: 0xffffff, side: THREE.FrontSide, metalness: 0,
+  roughness: 0, clearcoat: 1, reflectivity: 1, map: textura} );
+  var meshA = new THREE.Mesh( planoA,  materialA);
+  meshA.name = cualCara
+  uiPiece.add(meshA)
+
+  if (sumAbs > 1) {
+    if (uiPiece.position.y == 1) cualCara = 5;
+		else if (uiPiece.position.y == -1) cualCara = 4;
+		else if (uiPiece.position.y == 0) {
+			if (uiPiece.position.x == -1) cualCara = 2;
+			else if (uiPiece.position.x == 1) cualCara = 1;
+			if (uiPiece.position.z == -1) cualCara = 3;
+    }
+    var planoB = new THREE.PlaneBufferGeometry( 0.86, 0.86 );
+    var materialB = new THREE.MeshPhysicalMaterial( {color: 0xffffff, side: THREE.FrontSide, metalness: 0,
+      roughness: 0, clearcoat: 1, reflectivity: 1, map: textura} );
+		var meshB = new THREE.Mesh( planoB,  materialB);
+    meshB.name = cualCara
+    uiPiece.add(meshB)
+		if (sumAbs > 2) {
+      if (uiPiece.position.z == -1) cualCara = 3;
+			else {
+
+				if (uiPiece.position.y == 1) {
+					if (uiPiece.position.x == -1) cualCara = 2;
+					else if (uiPiece.position.x == 1) cualCara = 1;
+				}
+				else if (uiPiece.position.y == -1) {
+					if (uiPiece.position.x == -1) cualCara = 2;
+					else if (uiPiece.position.x == 1) cualCara = 1;
+				}
+      }
+      var planoC = new THREE.PlaneBufferGeometry( 0.86, 0.86 );
+      var materialC = new THREE.MeshPhysicalMaterial( {color: 0xffffff, side: THREE.FrontSide, metalness: 0,
+        roughness: 0, clearcoat: 1, reflectivity: 1, map: textura} );
+      var meshC = new THREE.Mesh( planoC,  materialC);
+      meshC.name = cualCara
+      uiPiece.add(meshC)
+    }
+  }
+  // REPOSICIONA Y REMAPEA ******************
+  
+  var unit = 1 / CUBE_SIZE;
+  for (var u=1; u < uiPiece.children.length; u++){
+    if (uiPiece.children[u].name == 0) {
+      uiPiece.children[u].position.z = 0.48
+      uiPiece.children[u].material.map = globals.texturas[0]
+      var ox, oy;
+      ox = uiPiece.position.x + 1
+      oy = uiPiece.position.y + 1
+      var uvs = uiPiece.children[u].geometry.attributes.uv.array;
+      for ( var n = 0; n < uvs.length; n += 2 ) {
+        uvs[ n ] = ( uvs[ n ] + ox ) * unit;
+        uvs[ n + 1 ] = ( uvs[ n + 1 ] + oy ) * unit;
+      }
+    } else if (uiPiece.children[u].name == 1) {
+      uiPiece.children[u].position.x = 0.48
+      uiPiece.children[u].rotation.y = Math.PI/2
+      uiPiece.children[u].material.map = globals.texturas[1]
+      var ox, oy;
+      ox = Math.abs(uiPiece.position.z - 1)
+      oy = uiPiece.position.y + 1
+      var uvs = uiPiece.children[u].geometry.attributes.uv.array;
+      for ( var n = 0; n < uvs.length; n += 2 ) {
+        uvs[ n ] = ( uvs[ n ] + ox ) * unit;
+        uvs[ n + 1 ] = ( uvs[ n + 1 ] + oy ) * unit;
+      }
+    } else if (uiPiece.children[u].name == 2) {
+      uiPiece.children[u].position.x = -0.48
+      uiPiece.children[u].rotation.y = -Math.PI/2
+      uiPiece.children[u].material.map = globals.texturas[2]
+      var ox, oy;
+      ox = uiPiece.position.z + 1
+      oy = uiPiece.position.y + 1
+      var uvs = uiPiece.children[u].geometry.attributes.uv.array;
+      for ( var n = 0; n < uvs.length; n += 2 ) {
+        uvs[ n ] = ( uvs[ n ] + ox ) * unit;
+        uvs[ n + 1 ] = ( uvs[ n + 1 ] + oy ) * unit;
+      }
+    } else if (uiPiece.children[u].name == 3) {
+      uiPiece.children[u].position.z = -0.48
+      uiPiece.children[u].rotation.y = Math.PI
+      uiPiece.children[u].material.map = globals.texturas[3]
+      var ox, oy;
+      ox = Math.abs(uiPiece.position.x - 1)
+      oy = uiPiece.position.y + 1
+      var uvs = uiPiece.children[u].geometry.attributes.uv.array;
+      for ( var n = 0; n < uvs.length; n += 2 ) {
+        uvs[ n ] = ( uvs[ n ] + ox ) * unit;
+        uvs[ n + 1 ] = ( uvs[ n + 1 ] + oy ) * unit;
+      }
+    } else if (uiPiece.children[u].name == 4) {
+      uiPiece.children[u].position.y = -0.48
+      uiPiece.children[u].rotation.x = Math.PI/2
+      uiPiece.children[u].material.map = globals.texturas[4]
+      var ox, oy;
+      ox = uiPiece.position.x + 1
+      oy = uiPiece.position.z + 1
+      var uvs = uiPiece.children[u].geometry.attributes.uv.array;
+      for ( var n = 0; n < uvs.length; n += 2 ) {
+        uvs[ n ] = ( uvs[ n ] + ox ) * unit;
+        uvs[ n + 1 ] = ( uvs[ n + 1 ] + oy ) * unit;
+      }
+    } else if (uiPiece.children[u].name == 5) {
+      uiPiece.children[u].position.y = 0.48
+      uiPiece.children[u].rotation.x = -Math.PI/2
+      uiPiece.children[u].material.map = globals.texturas[5]
+      var ox, oy;
+      ox = uiPiece.position.x + 1
+      oy = Math.abs(uiPiece.position.z - 1)
+      var uvs = uiPiece.children[u].geometry.attributes.uv.array;
+      for ( var n = 0; n < uvs.length; n += 2 ) {
+        uvs[ n ] = ( uvs[ n ] + ox ) * unit;
+        uvs[ n + 1 ] = ( uvs[ n + 1 ] + oy ) * unit;
+      }
+    }
+  }
   return uiPiece
 }
 
@@ -143,13 +265,6 @@ const resetUiPiece = (uiPiece, piece) => {
 const findUiPiece = piece =>
   globals.puzzleGroup.children.find(child => child.userData === piece.id)
 
-const resetUiPieces = cube => {
-  cube.forEach(piece => {
-    const uiPiece = findUiPiece(piece)
-    resetUiPiece(uiPiece, piece)
-  })
-}
-
 // fin cubo ------------------
 
 var animate = function() {
@@ -160,6 +275,8 @@ var animate = function() {
   //console.log (mousePressedPoint)
   globals.animationMixer.update(delta)
   globals.renderer.render(globals.scene, globals.camera)
+  //labelRenderer.render(globals.scene, globals.camera);
+
 }
 
 const movePiecesBetweenGroups = (uiPieces, fromGroup, toGroup) => {
@@ -186,6 +303,8 @@ const createAnimationClip = move => {
   const tracks = [new THREE.QuaternionKeyframeTrack('.quaternion', times, values)]
   return new THREE.AnimationClip(move.id, duration, tracks)
 }
+
+/*
 
 const animateMoves = (moves, nextMoveIndex = 0) => {
 
@@ -220,7 +339,8 @@ const animateMoves = (moves, nextMoveIndex = 0) => {
   clipAction.setLoop(THREE.LoopOnce)
   clipAction.play()
 }
-
+*/
+/*
 const showSolutionByCheating = randomMoves => {
   const solutionMoves = randomMoves
     .map(move => move.oppositeMoveId)
@@ -230,6 +350,7 @@ const showSolutionByCheating = randomMoves => {
   console.log( solutionMoves )
   animateMoves(solutionMoves)
 }
+*/
 
 let todosLosMovimientos = L.PER_CUBE_SIZE_DATA.get(CUBE_SIZE)
 //console.log(todosLosMovimientos)
@@ -246,41 +367,17 @@ todosLosMovimientos.moves.forEach(move => {
 const muevelo = cual => {
   const cualMovimiento = movimientos[cual]
   const elMovimiento = U.range(1).map(() => L.getMovimiento(cualMovimiento))
-  L.removeRedundantMoves(elMovimiento)
+  //L.removeRedundantMoves(elMovimiento)
   const solutionMoves = elMovimiento
     .map(move => move.oppositeMoveId)
     .map(id => L.lookupMoveId(CUBE_SIZE, id))
     .reverse()
+    /*
   console.log(`MUEVE: ${solutionMoves.map(move => move.id).join(' ')}`)
   console.log( solutionMoves )
+  */
   mueveUno(solutionMoves)
-}
-
-const scramble = () => {
-  console.log('DEsde scramble corre getRandomMove')
-  const randomMoves = U.range(NUM_RANDOM_MOVES).map(() => L.getRandomMove(CUBE_SIZE))
-  L.removeRedundantMoves(randomMoves)
-  console.log('DEsde scramble crea randomMoves = ')
-  console.log( randomMoves )
-  console.log(`Y dice que va a hacer estos movimientos -id-: ${randomMoves.map(move => move.id).join(' ')}`)
-  console.log('Le envia randomMoves a makeMoves, pidiendo getSolvedCube')
-  globals.cube = L.makeMoves(randomMoves, L.getSolvedCube(CUBE_SIZE))
-  resetUiPieces(globals.cube)
-  setTimeout(showSolutionByCheating, DELAY_MS, randomMoves)
-}
-
-const noScramble = () => {
-  console.log('noScramble ******************************')
-  //const randomMoves = U.range(NUM_RANDOM_MOVES).map(() => L.getRandomMove(CUBE_SIZE))
-  const elMovimiento = U.range(1).map(() => L.getMovimiento(1))
-  L.removeRedundantMoves(elMovimiento)
-  console.log('crea elMovimiento = ')
-  console.log( elMovimiento )
-  console.log(`Y dice que va a hacer estos movimientos -id-: ${elMovimiento.map(move => move.id).join(' ')}`)
-  console.log('Le envia elMovimiento a makeMoves, pidiendo getSolvedCube')
-  //globals.cube = L.makeMoves(elMovimiento, L.getSolvedCube(CUBE_SIZE))
-  //resetUiPieces(globals.cube)
-  setTimeout(showSolutionByCheating, DELAY_MS, elMovimiento)
+  girando = true
 }
 
 const init = async () => {
@@ -291,9 +388,16 @@ const init = async () => {
   globals.renderer.setClearColor("#000000")
   globals.renderer.setSize(w, h)
   document.body.appendChild(globals.renderer.domElement);
-
+/*
+  labelRenderer = new CSS2DRenderer();
+  labelRenderer.setSize( window.innerWidth, window.innerHeight );
+  labelRenderer.domElement.style.position = 'absolute';
+  labelRenderer.domElement.style.top = '0px';
+  document.body.appendChild( labelRenderer.domElement );
+  */  
   window.addEventListener('resize', () => {
     globals.renderer.setSize(window.innerWidth,window.innerHeight)
+    //labelRenderer.setSize( window.innerWidth, window.innerHeight );
     globals.camera.aspect = window.innerWidth / window.innerHeight
     globals.camera.updateProjectionMatrix()
   })
@@ -304,16 +408,15 @@ const init = async () => {
   globals.camera.position.set(0, 0, 12)
   globals.camera.lookAt(new THREE.Vector3(0, 0, 0))
   globals.scene.add(globals.camera)
-
-  /*
+  
   globals.controls = new OrbitControls(globals.camera, globals.renderer.domElement)
-  globals.controls.minDistance = 5.0
+  globals.controls.minDistance = 2.0
   globals.controls.maxDistance = 40.0
   globals.controls.enableDamping = true
   globals.controls.dampingFactor = 0.9
   //globals.controls.autoRotate = true
   //globals.controls.autoRotateSpeed = 1.0
-  */
+  
   const LIGHT_COLOUR = 0xffffff
   const LIGHT_INTENSITY = 1.2
   const LIGHT_DISTANCE = 10
@@ -342,11 +445,6 @@ const init = async () => {
   light6.position.set(-LIGHT_DISTANCE, 0, 0)
   globals.scene.add(light6)
 
-  if (AXES_ENABLED) {
-    const axesHelper = new THREE.AxesHelper(5)
-    globals.scene.add(axesHelper)
-  }
-
   globals.puzzleGroup = new THREE.Group()
   globals.scene.add(globals.puzzleGroup)
 
@@ -358,13 +456,17 @@ const init = async () => {
 
   globals.cube = L.getSolvedCube(CUBE_SIZE)
   const pieceGeometry = await loadGeometry('models/cube-bevelled.glb')
-  /* borrar faces
+  
   pieceGeometry.faces.forEach(function (item, index, object) {
       if (U.closeTo(item.normal.y, 1) || U.closeTo(item.normal.y, -1) || 
       U.closeTo(item.normal.x, 1) || U.closeTo(item.normal.x, -1) ||
-      U.closeTo(item.normal.z, 1) || U.closeTo(item.normal.z, -1)) object.splice(index, 1)
+      U.closeTo(item.normal.z, 1) || U.closeTo(item.normal.z, -1)) {
+        //console.log(index)
+        object.splice(index, 1)
+        object.splice(index+1, 1)
+      }
   })
-  */
+  
   //console.log( pieceGeometry.faces );
   
   createUiPieces(globals.cube, pieceGeometry)
@@ -375,6 +477,7 @@ const init = async () => {
 
 init()
 
+var girando = false
 const mueveUno = (moves, nextMoveIndex = 0) => {
 
   const move = moves[nextMoveIndex]
@@ -399,6 +502,8 @@ const mueveUno = (moves, nextMoveIndex = 0) => {
     for (const uiPiece of uiPieces) {
       uiPiece.applyMatrix4(rotationMatrix4)
     }
+    //console.log('TERMINO')
+    girando = false
     //setTimeout(animateMoves, SPEED_MILLISECONDS, moves, nextMoveIndex + 1)
   }
 
@@ -428,7 +533,7 @@ function onMouseUp(event) {
   event.preventDefault();
   mousePos(event)
 
-  if (mousePressed && globals.cuboClick != NaN) {
+  if (mousePressed && globals.cuboClick != NaN && girando == false) {
     deltaMouse.x = mouse.x - mousePressedPoint.x
     deltaMouse.y = mouse.y - mousePressedPoint.y
     //console.log(deltaMouse)
@@ -479,52 +584,21 @@ function onMouseDown(event) {
   mousePressedPoint.x = mouse.x
   mousePressedPoint.y = mouse.y
   mousePressed = true
-/*
-  //noScramble()
-  var cualMovimiento = movimientos[movIndex]
-  console.log('Mueve el ' + cualMovimiento)
-  const elMovimiento = U.range(1).map(() => L.getMovimiento(cualMovimiento))
-  L.removeRedundantMoves(elMovimiento)
-  setTimeout(muevelo, DELAY_MS, elMovimiento)
-  movIndex++
-  //console.log(movimientos)
+  globals.cuboClick = NaN
 
-  //mueveUno(movimientos.moves[mov])
-  //mov++;
-*/
   raycaster.setFromCamera(mouse, globals.camera);
   var intersects = raycaster.intersectObjects(globals.scene.children, true);
   if (intersects.length > 0) {
-    globals.cuboClick = intersects[0].object.position
-    console.log(intersects[0].object.userData)
+    globals.cuboClick = intersects[0].object.parent.position
+    //console.log(intersects[0].object.userData) // entero, el orden en el que fue creada cada ficha
+    //console.log(intersects[0].object)
+    //console.log(intersects[0])
   }
 }
 
 function onMouseMove(event) {
   event.preventDefault();
   mousePos(event)
-
-  /*
-  console.log ('mouseDragged')
-  console.log (mouseDragged)
-  */
-  /*
-  event.preventDefault();
-
-  raycaster.setFromCamera(mouse, globals.camera);
-
-  //var intersects = raycaster.intersectObjects(scene.children, true);
-
-
-  //for (var i = 0; i < intersects.length; i++) {
-    //console.log( 'Objeto ' + intersects[i].object.children );
-      //this.tl = new TimelineMax();
-      //this.tl.to(intersects[i].object.scale, 1, {x: 2, ease: Expo.easeOut})
-      //this.tl.to(intersects[i].object.scale, .5, {x: .5, ease: Expo.easeOut})
-      //this.tl.to(intersects[i].object.position, 3, {x: -2, ease: Expo.easeOut})
-      //this.tl.to(intersects[i].object.rotation, .5, {y: Math.PI*.5, ease: Expo.easeOut}, "=-1.5")
-  }
-  */
 }
 
 function mousePos(event) {
