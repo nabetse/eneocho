@@ -2,28 +2,10 @@ import './style.css';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-//import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import * as L from '../logic'
 import * as U from '../logic/utils'
-
-//var labelRenderer
-/*
-var raycaster = new THREE.Raycaster();
-var mouse = new THREE.Vector2();
-*/
-
-// cubo setup
-/*
-const COLOUR_TABLE = {
-  'U': new THREE.Color('blue'),
-  'D': new THREE.Color('green'),
-  'L': new THREE.Color('red'),
-  'R': new THREE.Color('darkorange'),
-  'F': new THREE.Color('yellow'),
-  'B': new THREE.Color('ghostwhite'),
-  '-': new THREE.Color(0x101010)
-}
-*/
 
 const CUBE_SIZE = 3
 const SPEED_MILLISECONDS = 750
@@ -43,6 +25,19 @@ const globals = {
   cuboClick: undefined,
   texturas: undefined
 }
+
+
+// - Preload
+const loadingManager = new THREE.LoadingManager();
+loadingManager.onLoad = function () {
+  that.overlay = false;
+};
+loadingManager.onProgress = function (url, itemsLoaded, itemsTotal) {
+  that.textUpdate = 'Cargando: ' + itemsLoaded + ' de ' + itemsTotal + ' Archivos. '
+};
+// ----fin-------------------------------------------Preload
+
+// ----- Geometrias, piezas, jugadas
 
 const makeRotationMatrix4 = rotationMatrix3 => {
   const n11 = rotationMatrix3.get([0, 0])
@@ -64,6 +59,11 @@ const makeRotationMatrix4 = rotationMatrix3 => {
 const loadGeometry = url =>
   new Promise((resolve, reject) => {
     const loader = new GLTFLoader()
+
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath( 'draco/' );
+    loader.setDRACOLoader( dracoLoader );
+
     loader.load(
       url,
       gltf => {
@@ -72,7 +72,11 @@ const loadGeometry = url =>
         geometry.fromBufferGeometry(bufferGeometry)
         resolve(geometry)
       },
-      undefined,
+      function ( xhr ) {
+
+        console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+    
+      },
       reject)
   })
 
@@ -265,20 +269,9 @@ const resetUiPiece = (uiPiece, piece) => {
 const findUiPiece = piece =>
   globals.puzzleGroup.children.find(child => child.userData === piece.id)
 
-// fin cubo ------------------
+// -----fin----------------------------- Geometrias, piezas, jugadas
 
-var animate = function() {
-  window.requestAnimationFrame(animate)
-  //globals.controls.update()
-  const delta = globals.clock.getDelta() * globals.animationMixer.timeScale
-  //console.log ('desde loop: mousePressedPoint ')
-  //console.log (mousePressedPoint)
-  globals.animationMixer.update(delta)
-  globals.renderer.render(globals.scene, globals.camera)
-  //labelRenderer.render(globals.scene, globals.camera);
-
-}
-
+// ----- Movimientos
 const movePiecesBetweenGroups = (uiPieces, fromGroup, toGroup) => {
   if (uiPieces.length) {
     fromGroup.remove(...uiPieces)
@@ -287,7 +280,9 @@ const movePiecesBetweenGroups = (uiPieces, fromGroup, toGroup) => {
 }
 
 const createAnimationClip = move => {
+  //console.log('creando AnimationClip')
   const numTurns = move.numTurns
+  //console.log(numTurns)
   const t0 = 0
   const t1 = numTurns * (SPEED_MILLISECONDS / 1000)
   const times = [t0, t1]
@@ -296,61 +291,16 @@ const createAnimationClip = move => {
   const endQuaternion = new THREE.Quaternion()
   const rotationMatrix3 = move.rotationMatrix3
   const rotationMatrix4 = makeRotationMatrix4(rotationMatrix3)
+  //console.log(rotationMatrix4)
   endQuaternion.setFromRotationMatrix(rotationMatrix4)
   startQuaternion.toArray(values, values.length)
+  //console.log(startQuaternion)
   endQuaternion.toArray(values, values.length)
+  //console.log(endQuaternion)
   const duration = -1
   const tracks = [new THREE.QuaternionKeyframeTrack('.quaternion', times, values)]
   return new THREE.AnimationClip(move.id, duration, tracks)
 }
-
-/*
-
-const animateMoves = (moves, nextMoveIndex = 0) => {
-
-  const move = moves[nextMoveIndex]
-
-  if (!move) {
-    //return setTimeout(scramble, 2000)
-  }
-
-  const pieces = L.getPieces(globals.cube, move.coordsList)
-  const uiPieces = pieces.map(findUiPiece)
-  movePiecesBetweenGroups(uiPieces, globals.puzzleGroup, globals.animationGroup)
-
-  const onFinished = () => {
-    globals.animationMixer.removeEventListener('finished', onFinished)
-    movePiecesBetweenGroups(uiPieces, globals.animationGroup, globals.puzzleGroup)
-    globals.cube = move.makeMove(globals.cube)
-    const rotationMatrix3 = move.rotationMatrix3
-    const rotationMatrix4 = makeRotationMatrix4(rotationMatrix3)
-    for (const uiPiece of uiPieces) {
-      uiPiece.applyMatrix4(rotationMatrix4)
-    }
-    setTimeout(animateMoves, SPEED_MILLISECONDS, moves, nextMoveIndex + 1)
-  }
-
-  globals.animationMixer.addEventListener('finished', onFinished)
-
-  const animationClip = createAnimationClip(move)
-  const clipAction = globals.animationMixer.clipAction(
-    animationClip,
-    globals.animationGroup)
-  clipAction.setLoop(THREE.LoopOnce)
-  clipAction.play()
-}
-*/
-/*
-const showSolutionByCheating = randomMoves => {
-  const solutionMoves = randomMoves
-    .map(move => move.oppositeMoveId)
-    .map(id => L.lookupMoveId(CUBE_SIZE, id))
-    .reverse()
-  console.log(`solution moves: ${solutionMoves.map(move => move.id).join(' ')}`)
-  console.log( solutionMoves )
-  animateMoves(solutionMoves)
-}
-*/
 
 let todosLosMovimientos = L.PER_CUBE_SIZE_DATA.get(CUBE_SIZE)
 //console.log(todosLosMovimientos)
@@ -365,6 +315,8 @@ todosLosMovimientos.moves.forEach(move => {
 //console.log(movimientos)
 
 const muevelo = cual => {
+
+  console.log ('muevelo ' + cual)
   const cualMovimiento = movimientos[cual]
   const elMovimiento = U.range(1).map(() => L.getMovimiento(cualMovimiento))
   //L.removeRedundantMoves(elMovimiento)
@@ -372,13 +324,80 @@ const muevelo = cual => {
     .map(move => move.oppositeMoveId)
     .map(id => L.lookupMoveId(CUBE_SIZE, id))
     .reverse()
-    /*
+    
   console.log(`MUEVE: ${solutionMoves.map(move => move.id).join(' ')}`)
-  console.log( solutionMoves )
-  */
+  //console.log( solutionMoves )
+  
   mueveUno(solutionMoves)
   girando = true
 }
+
+var girando = false
+const mueveUno = (moves, nextMoveIndex = 0) => {
+
+  const move = moves[nextMoveIndex]
+  console.log ('Desde mueveUno move =')
+  console.log (move)
+
+
+  if (!move) {
+    //console.log('No hay otro movimiento ')
+    //return setTimeout(scramble, 2000)
+  }
+
+  //console.log('Mueve ' + move)
+  const pieces = L.getPieces(globals.cube, move.coordsList)
+  const uiPieces = pieces.map(findUiPiece)
+  movePiecesBetweenGroups(uiPieces, globals.puzzleGroup, globals.animationGroup)
+
+  const onFinished = () => {
+    globals.animationMixer.removeEventListener('finished', onFinished)
+    /*
+    movePiecesBetweenGroups(uiPieces, globals.animationGroup, globals.puzzleGroup)
+    globals.cube = move.makeMove(globals.cube)
+    const rotationMatrix3 = move.rotationMatrix3
+    const rotationMatrix4 = makeRotationMatrix4(rotationMatrix3)
+    for (const uiPiece of uiPieces) {
+      uiPiece.applyMatrix4(rotationMatrix4)
+    }
+    */
+    console.log('TERMINO')
+    girando = false
+    //setTimeout(animateMoves, SPEED_MILLISECONDS, moves, nextMoveIndex + 1)
+  }
+
+  globals.animationMixer.addEventListener('finished', onFinished)
+
+  const animationClip = createAnimationClip(move)
+  const clipAction = globals.animationMixer.clipAction(
+    animationClip,
+    globals.animationGroup)
+  clipAction.setLoop(THREE.LoopOnce)
+  clipAction.play()
+}
+
+// -----fin----------------------------- Movimientos
+
+// --- GUI
+var labelRenderer
+// -----fin----------------------------- GUI
+
+// ---- Threejs SETUP
+
+
+var animate = function() {
+  window.requestAnimationFrame(animate)
+  //globals.controls.update()
+  const delta = globals.clock.getDelta() * globals.animationMixer.timeScale
+  //console.log ('desde loop: mousePressedPoint ')
+  //console.log (mousePressedPoint)
+  globals.animationMixer.update(delta)
+  globals.renderer.render(globals.scene, globals.camera)
+  //labelRenderer.render(globals.scene, globals.camera);
+
+}
+
+
 
 const init = async () => {
 
@@ -455,7 +474,7 @@ const init = async () => {
   globals.animationMixer = new THREE.AnimationMixer()
 
   globals.cube = L.getSolvedCube(CUBE_SIZE)
-  const pieceGeometry = await loadGeometry('models/cube-bevelled.glb')
+  const pieceGeometry = await loadGeometry('models/qbFinal.glb')
   
   pieceGeometry.faces.forEach(function (item, index, object) {
       if (U.closeTo(item.normal.y, 1) || U.closeTo(item.normal.y, -1) || 
@@ -476,48 +495,11 @@ const init = async () => {
 }
 
 init()
+// ----fin ------------------------------- Threejs SETUP
+// ----- MOUSE INTERACTION
 
-var girando = false
-const mueveUno = (moves, nextMoveIndex = 0) => {
-
-  const move = moves[nextMoveIndex]
-
-
-  if (!move) {
-    //console.log('No hay otro movimiento ')
-    //return setTimeout(scramble, 2000)
-  }
-
-  //console.log('Mueve ' + move)
-  const pieces = L.getPieces(globals.cube, move.coordsList)
-  const uiPieces = pieces.map(findUiPiece)
-  movePiecesBetweenGroups(uiPieces, globals.puzzleGroup, globals.animationGroup)
-
-  const onFinished = () => {
-    globals.animationMixer.removeEventListener('finished', onFinished)
-    movePiecesBetweenGroups(uiPieces, globals.animationGroup, globals.puzzleGroup)
-    globals.cube = move.makeMove(globals.cube)
-    const rotationMatrix3 = move.rotationMatrix3
-    const rotationMatrix4 = makeRotationMatrix4(rotationMatrix3)
-    for (const uiPiece of uiPieces) {
-      uiPiece.applyMatrix4(rotationMatrix4)
-    }
-    //console.log('TERMINO')
-    girando = false
-    //setTimeout(animateMoves, SPEED_MILLISECONDS, moves, nextMoveIndex + 1)
-  }
-
-  globals.animationMixer.addEventListener('finished', onFinished)
-
-  const animationClip = createAnimationClip(move)
-  const clipAction = globals.animationMixer.clipAction(
-    animationClip,
-    globals.animationGroup)
-  clipAction.setLoop(THREE.LoopOnce)
-  clipAction.play()
-}
-
-//var movIndex = 0 //quitar una vez entendidos
+var raycaster = new THREE.Raycaster();
+var mouse = new THREE.Vector2();
 
 globals.cuboClick = new THREE.Vector3()
 // -----------mouseEvent-------------
@@ -611,3 +593,5 @@ window.addEventListener('pointerdown', onMouseDown);
 window.addEventListener('pointerup', onMouseUp);
 //window.addEventListener('mouseup', onMouseUp);
 window.addEventListener('mousemove', onMouseMove);
+
+// ----- fin -----------------------------------MOUSE INTERACTION 
