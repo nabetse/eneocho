@@ -2,28 +2,13 @@ import './style.css';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 //import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import * as L from '../logic'
 import * as U from '../logic/utils'
 
 //var labelRenderer
-/*
-
-*/
-
-// cubo setup
-/*
-const COLOUR_TABLE = {
-  'U': new THREE.Color('blue'),
-  'D': new THREE.Color('green'),
-  'L': new THREE.Color('red'),
-  'R': new THREE.Color('darkorange'),
-  'F': new THREE.Color('yellow'),
-  'B': new THREE.Color('ghostwhite'),
-  '-': new THREE.Color(0x101010)
-}
-*/
 
 const CUBE_SIZE = 3
 const SPEED_MILLISECONDS = 750
@@ -64,6 +49,10 @@ const makeRotationMatrix4 = rotationMatrix3 => {
 const loadGeometry = url =>
   new Promise((resolve, reject) => {
     const loader = new GLTFLoader()
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath( 'draco/' );
+    loader.setDRACOLoader( dracoLoader );
+
     loader.load(
       url,
       gltf => {
@@ -72,7 +61,11 @@ const loadGeometry = url =>
         geometry.fromBufferGeometry(bufferGeometry)
         resolve(geometry)
       },
-      undefined,
+      function ( xhr ) {
+
+        console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+    
+      },
       reject)
   })
 
@@ -379,6 +372,8 @@ const muevelo = cual => {
   girando = true
 }
 
+// --- InterAction ----------------------------
+
 var raycaster = new THREE.Raycaster();
 var mouseOrbit = new THREE.Vector2();
 globals.cuboClick = new THREE.Vector3()
@@ -400,7 +395,7 @@ function orbitStart ( ) {
 }
 
 function orbitEnd ( ) {
-  console.log('De orbitEnd')
+  //console.log('De orbitEnd')
   globals.controls.enableRotate = true;
   if (typeof globals.cuboClick.x !== 'undefined' && girando == false) {
     let mouseUp = new THREE.Vector2();
@@ -409,10 +404,10 @@ function orbitEnd ( ) {
     let deltaMouse = new THREE.Vector2();
     deltaMouse.x = (mouseUp.x - mouseOrbit.x) * window.innerWidth
     deltaMouse.y = (mouseUp.y - mouseOrbit.y) * window.innerHeight
-    console.log('Con inicio x en ' + mouseOrbit.x + ' terminando en ' + mouseUp.x + 'deltaX = ' + deltaMouse.x)
-    console.log('Con inicio y en ' + mouseOrbit.y + ' terminando en ' + mouseUp.y + 'deltaY = ' + deltaMouse.y)
+    //console.log('Con inicio x en ' + mouseOrbit.x + ' terminando en ' + mouseUp.x + 'deltaX = ' + deltaMouse.x)
+    //console.log('Con inicio y en ' + mouseOrbit.y + ' terminando en ' + mouseUp.y + 'deltaY = ' + deltaMouse.y)
     if (Math.abs(deltaMouse.x) > Math.abs(deltaMouse.y)) { // mov horizontal
-      console.log('horizontal')
+      //console.log('horizontal')
       if (deltaMouse.x < 0 && globals.cuboClick) { // mov a la izquierda
         if (globals.cuboClick.y == 1) muevelo(10)
         else if (globals.cuboClick.y == 0) muevelo(8)
@@ -424,7 +419,7 @@ function orbitEnd ( ) {
       }
     } 
     else if (Math.abs(deltaMouse.x) < Math.abs(deltaMouse.y)){ // mov vertical
-      console.log('vertical')
+      //console.log('vertical')
       if (deltaMouse.y > 0) { // mov arriba
         if (globals.cuboClick.x == 1) muevelo(4)
         else if (globals.cuboClick.x == 0) muevelo(2)
@@ -438,7 +433,7 @@ function orbitEnd ( ) {
     }
   }
   globals.cuboClick = NaN
-  console.log('end');
+  //console.log('end');
 }
 
 /*
@@ -448,6 +443,8 @@ function orbitChange ( ) {
   console.log(globals.controls.getPolarAngle());
 }
 */
+
+// --- fin ------------------------------------InterAction ----
 
 const init = async () => {
 
@@ -531,18 +528,7 @@ const init = async () => {
   globals.animationMixer = new THREE.AnimationMixer()
 
   globals.cube = L.getSolvedCube(CUBE_SIZE)
-  const pieceGeometry = await loadGeometry('models/cube-bevelled.glb')
-  
-  pieceGeometry.faces.forEach(function (item, index, object) {
-      if (U.closeTo(item.normal.y, 1) || U.closeTo(item.normal.y, -1) || 
-      U.closeTo(item.normal.x, 1) || U.closeTo(item.normal.x, -1) ||
-      U.closeTo(item.normal.z, 1) || U.closeTo(item.normal.z, -1)) {
-        //console.log(index)
-        object.splice(index, 1)
-        object.splice(index+1, 1)
-      }
-  })
-  
+  const pieceGeometry = await loadGeometry('models/qbFinal.glb')
   //console.log( pieceGeometry.faces );
   
   createUiPieces(globals.cube, pieceGeometry)
@@ -597,131 +583,3 @@ const mueveUno = (moves, nextMoveIndex = 0) => {
 let stats;
 stats = new Stats();
 document.body.appendChild( stats.dom );
-// -----------mouseEvent-------------
-
-/*
-var mouse = new THREE.Vector2()
-
-let mousePressed = false
-let cualCubo
-const mousePressedPoint = new THREE.Vector2();
-let deltaMouse = new THREE.Vector2();
-
-function onMouseUp(event) {
-  globals.controls.enabled = true;
-  event.preventDefault();
-  mousePos(event)
-
-  if (mousePressed && globals.cuboClick != NaN && girando == false) {
-    deltaMouse.x = mouse.x - mousePressedPoint.x
-    deltaMouse.y = mouse.y - mousePressedPoint.y
-    //console.log(deltaMouse)
-    //console.log(globals.cuboClick)
-    if (Math.abs(deltaMouse.x) > Math.abs(deltaMouse.y)) { // mov horizontal
-      //console.log('horizontal')
-      if (deltaMouse.x < 0) { // mov a la izquierda
-        if (globals.cuboClick.y == 1) muevelo(10)
-        else if (globals.cuboClick.y == 0) muevelo(8)
-        else if (globals.cuboClick.y == -1) muevelo(6)
-      } else  { // mov a la derecha
-        if (globals.cuboClick.y == 1) muevelo(11)
-        else if (globals.cuboClick.y == 0) muevelo(9)
-        else if (globals.cuboClick.y == -1) muevelo(7)
-      }
-    } 
-    else if (Math.abs(deltaMouse.x) < Math.abs(deltaMouse.y)){ // mov vertical
-      //console.log('vertical')
-      if (deltaMouse.y > 0) { // mov arriba
-        if (globals.cuboClick.x == 1) muevelo(4)
-        else if (globals.cuboClick.x == 0) muevelo(2)
-        else if (globals.cuboClick.x == -1) muevelo(0)
-      } else { // mov abajo
-        if (globals.cuboClick.x == 1) muevelo(5)
-        else if (globals.cuboClick.x == 0) muevelo(3)
-        else if (globals.cuboClick.x == -1) muevelo(1)
-      }
-
-    }
-    
-    console.log ('onMouseUp ')
-    console.log (mouse)
-    console.log ('con  mousePressedPoint')
-    console.log (mousePressedPoint)
-    console.log ('deltaMouse')
-    console.log (deltaMouse)
-    
-  }
-  mousePressed = false
-  globals.cuboClick = NaN
-  //console.log(globals.cuboClick)
-}
-
-function onMouseDown(event) {
-  globals.controls.enabled = true;
-  event.preventDefault();
-  mousePos(event)
-
-  console.log(globals.controls)
-  
-  mousePressedPoint.x = mouse.x
-  mousePressedPoint.y = mouse.y
-  mousePressed = true
-  globals.cuboClick = NaN
-
-  raycaster.setFromCamera(mouse, globals.camera);
-  var intersects = raycaster.intersectObjects(globals.scene.children, true);
-  if (intersects.length > 0) {
-    globals.controls.enabled = false;
-    globals.cuboClick = intersects[0].object.parent.position
-    //console.log(intersects[0].object.userData) // entero, el orden en el que fue creada cada ficha
-    //console.log(intersects[0].object)
-    //console.log(intersects[0])
-  }
-}
-
-function onMouseMove(event) {
-  event.preventDefault();
-  mousePos(event)
-}
-
-function mousePos(event) {
-  mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-  mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-}
-
-window.addEventListener('pointerdown', onMouseDown);
-//window.addEventListener('mousedown', onMouseDown);
-window.addEventListener('pointerup', onMouseUp);
-//window.addEventListener('mouseup', onMouseUp);
-window.addEventListener('mousemove', onMouseMove);
-
-
-var mousePointer = new THREE.Vector2();
-
-function onMouseDown(event) {
-  console.log('De mouse')
-  event.preventDefault();
-  mousePointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-  mousePointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-
-  raycaster.setFromCamera(mousePointer, globals.camera);
-  var intersects = raycaster.intersectObjects(globals.scene.children, true);
-
-  console.log(event.clientX)
-  console.log(event.clientY)
-  console.log(event.clientX / window.innerWidth)
-  console.log(event.clientY / window.innerHeight)
-  console.log(mousePointer)
-  console.log(intersects)
-  if (intersects.length > 0) {
-    globals.controls.enabled = false;
-    globals.cuboClick = intersects[0].object.parent.position
-    //console.log(intersects[0].object.userData) // entero, el orden en el que fue creada cada ficha
-    //console.log(intersects[0].object)
-    //console.log(intersects[0])
-  }
-}
-
-window.addEventListener('pointerdown', onMouseDown);
-
-*/
