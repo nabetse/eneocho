@@ -4,11 +4,9 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
-//import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import * as L from '../logic'
 import * as U from '../logic/utils'
-
-//var labelRenderer
 
 const CUBE_SIZE = 3
 const SPEED_MILLISECONDS = 750
@@ -28,6 +26,18 @@ const globals = {
   cuboClick: undefined,
   texturas: undefined
 }
+
+// - Preload ----------------------------------------
+const loadingManager = new THREE.LoadingManager();
+loadingManager.onLoad = function () {
+  that.overlay = false;
+};
+loadingManager.onProgress = function (url, itemsLoaded, itemsTotal) {
+  that.textUpdate = 'Cargando: ' + itemsLoaded + ' de ' + itemsTotal + ' Archivos. '
+};
+// ----fin------------------------------------------- Preload
+
+// ----- Geometrias, piezas, jugadas ----------------
 
 const makeRotationMatrix4 = rotationMatrix3 => {
   const n11 = rotationMatrix3.get([0, 0])
@@ -258,19 +268,8 @@ const resetUiPiece = (uiPiece, piece) => {
 const findUiPiece = piece =>
   globals.puzzleGroup.children.find(child => child.userData === piece.id)
 
-// fin cubo ------------------
-
-var animate = function() {
-  window.requestAnimationFrame(animate)
-  //if ( globals.controls.enabled ) globals.controls.update();
-  const delta = globals.clock.getDelta() * globals.animationMixer.timeScale
-  globals.animationMixer.update(delta)
-  globals.renderer.render(globals.scene, globals.camera)
-  //labelRenderer.render(globals.scene, globals.camera);
-  stats.update();
-  
-}
-
+// -----fin---------------------------------- Geometrias, piezas, jugadas
+// ----- Movimientos ---------------------------
 const movePiecesBetweenGroups = (uiPieces, fromGroup, toGroup) => {
   if (uiPieces.length) {
     fromGroup.remove(...uiPieces)
@@ -296,54 +295,6 @@ const createAnimationClip = move => {
   return new THREE.AnimationClip(move.id, duration, tracks)
 }
 
-/*
-
-const animateMoves = (moves, nextMoveIndex = 0) => {
-
-  const move = moves[nextMoveIndex]
-
-  if (!move) {
-    //return setTimeout(scramble, 2000)
-  }
-
-  const pieces = L.getPieces(globals.cube, move.coordsList)
-  const uiPieces = pieces.map(findUiPiece)
-  movePiecesBetweenGroups(uiPieces, globals.puzzleGroup, globals.animationGroup)
-
-  const onFinished = () => {
-    globals.animationMixer.removeEventListener('finished', onFinished)
-    movePiecesBetweenGroups(uiPieces, globals.animationGroup, globals.puzzleGroup)
-    globals.cube = move.makeMove(globals.cube)
-    const rotationMatrix3 = move.rotationMatrix3
-    const rotationMatrix4 = makeRotationMatrix4(rotationMatrix3)
-    for (const uiPiece of uiPieces) {
-      uiPiece.applyMatrix4(rotationMatrix4)
-    }
-    setTimeout(animateMoves, SPEED_MILLISECONDS, moves, nextMoveIndex + 1)
-  }
-
-  globals.animationMixer.addEventListener('finished', onFinished)
-
-  const animationClip = createAnimationClip(move)
-  const clipAction = globals.animationMixer.clipAction(
-    animationClip,
-    globals.animationGroup)
-  clipAction.setLoop(THREE.LoopOnce)
-  clipAction.play()
-}
-*/
-/*
-const showSolutionByCheating = randomMoves => {
-  const solutionMoves = randomMoves
-    .map(move => move.oppositeMoveId)
-    .map(id => L.lookupMoveId(CUBE_SIZE, id))
-    .reverse()
-  console.log(`solution moves: ${solutionMoves.map(move => move.id).join(' ')}`)
-  console.log( solutionMoves )
-  animateMoves(solutionMoves)
-}
-*/
-
 let todosLosMovimientos = L.PER_CUBE_SIZE_DATA.get(CUBE_SIZE)
 //console.log(todosLosMovimientos)
 var movimientos =[]
@@ -364,13 +315,51 @@ const muevelo = cual => {
     .map(move => move.oppositeMoveId)
     .map(id => L.lookupMoveId(CUBE_SIZE, id))
     .reverse()
-    /*
-  console.log(`MUEVE: ${solutionMoves.map(move => move.id).join(' ')}`)
-  console.log( solutionMoves )
-  */
   mueveUno(solutionMoves)
   girando = true
 }
+
+var girando = false
+const mueveUno = (moves, nextMoveIndex = 0) => {
+
+  const move = moves[nextMoveIndex]
+
+
+  if (!move) {
+    //console.log('No hay otro movimiento ')
+    //return setTimeout(scramble, 2000)
+  }
+
+  //console.log('Mueve ' + move)
+  const pieces = L.getPieces(globals.cube, move.coordsList)
+  const uiPieces = pieces.map(findUiPiece)
+  movePiecesBetweenGroups(uiPieces, globals.puzzleGroup, globals.animationGroup)
+
+  const onFinished = () => {
+    globals.animationMixer.removeEventListener('finished', onFinished)
+    movePiecesBetweenGroups(uiPieces, globals.animationGroup, globals.puzzleGroup)
+    globals.cube = move.makeMove(globals.cube)
+    const rotationMatrix3 = move.rotationMatrix3
+    const rotationMatrix4 = makeRotationMatrix4(rotationMatrix3)
+    for (const uiPiece of uiPieces) {
+      uiPiece.applyMatrix4(rotationMatrix4)
+    }
+    //console.log('TERMINO')
+    girando = false
+    //setTimeout(animateMoves, SPEED_MILLISECONDS, moves, nextMoveIndex + 1)
+  }
+
+  globals.animationMixer.addEventListener('finished', onFinished)
+
+  const animationClip = createAnimationClip(move)
+  const clipAction = globals.animationMixer.clipAction(
+    animationClip,
+    globals.animationGroup)
+  clipAction.setLoop(THREE.LoopOnce)
+  clipAction.play()
+}
+
+// -----fin----------------------------- Movimientos
 
 // --- InterAction ----------------------------
 
@@ -445,6 +434,28 @@ function orbitChange ( ) {
 */
 
 // --- fin ------------------------------------InterAction ----
+
+// --- GUI -----------------------------------
+var labelRenderer
+// -----fin----------------------------- GUI
+
+// -- ayudas
+let stats;
+stats = new Stats();
+document.body.appendChild( stats.dom );
+// -----fin----------------------------- ayudas
+
+// ---- Threejs SETUP
+var animate = function() {
+  window.requestAnimationFrame(animate)
+  //if ( globals.controls.enabled ) globals.controls.update();
+  const delta = globals.clock.getDelta() * globals.animationMixer.timeScale
+  globals.animationMixer.update(delta)
+  globals.renderer.render(globals.scene, globals.camera)
+  //labelRenderer.render(globals.scene, globals.camera);
+  stats.update();
+  
+}
 
 const init = async () => {
 
@@ -538,48 +549,4 @@ const init = async () => {
 }
 
 init()
-
-var girando = false
-const mueveUno = (moves, nextMoveIndex = 0) => {
-
-  const move = moves[nextMoveIndex]
-
-
-  if (!move) {
-    //console.log('No hay otro movimiento ')
-    //return setTimeout(scramble, 2000)
-  }
-
-  //console.log('Mueve ' + move)
-  const pieces = L.getPieces(globals.cube, move.coordsList)
-  const uiPieces = pieces.map(findUiPiece)
-  movePiecesBetweenGroups(uiPieces, globals.puzzleGroup, globals.animationGroup)
-
-  const onFinished = () => {
-    globals.animationMixer.removeEventListener('finished', onFinished)
-    movePiecesBetweenGroups(uiPieces, globals.animationGroup, globals.puzzleGroup)
-    globals.cube = move.makeMove(globals.cube)
-    const rotationMatrix3 = move.rotationMatrix3
-    const rotationMatrix4 = makeRotationMatrix4(rotationMatrix3)
-    for (const uiPiece of uiPieces) {
-      uiPiece.applyMatrix4(rotationMatrix4)
-    }
-    //console.log('TERMINO')
-    girando = false
-    //setTimeout(animateMoves, SPEED_MILLISECONDS, moves, nextMoveIndex + 1)
-  }
-
-  globals.animationMixer.addEventListener('finished', onFinished)
-
-  const animationClip = createAnimationClip(move)
-  const clipAction = globals.animationMixer.clipAction(
-    animationClip,
-    globals.animationGroup)
-  clipAction.setLoop(THREE.LoopOnce)
-  clipAction.play()
-}
-
-//var movIndex = 0 //quitar una vez entendidos
-let stats;
-stats = new Stats();
-document.body.appendChild( stats.dom );
+// ----fin ------------------------------- Threejs SETUP
