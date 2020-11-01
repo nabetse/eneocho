@@ -35,9 +35,11 @@ loadingManager.onLoad = function () {
   that.overlay = false;
 };
 loadingManager.onProgress = function (url, itemsLoaded, itemsTotal) {
-  that.textUpdate = 'Cargando: ' + itemsLoaded + ' de ' + itemsTotal + ' Archivos. '
+  //that.textUpdate = 'Cargando: ' + itemsLoaded + ' de ' + itemsTotal + ' Archivos. '
+  console.log('Cargando: ' + itemsLoaded + ' de ' + itemsTotal + ' Archivos. ')
 };
 // ----fin------------------------------------------- Preload
+
 
 // ----- Geometrias, piezas, jugadas ----------------
 
@@ -60,7 +62,7 @@ const makeRotationMatrix4 = rotationMatrix3 => {
 
 const loadGeometry = url =>
   new Promise((resolve, reject) => {
-    const loader = new GLTFLoader()
+    const loader = new GLTFLoader(loadingManager)
     const dracoLoader = new DRACOLoader();
     dracoLoader.setDecoderPath( 'draco/' );
     loader.setDRACOLoader( dracoLoader );
@@ -75,7 +77,7 @@ const loadGeometry = url =>
       },
       function ( xhr ) {
 
-        console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+        console.log( ( xhr.loaded / xhr.total * 100 ) + '% cargado de qb' );
     
       },
       reject)
@@ -363,6 +365,20 @@ const mueveUno = (moves, nextMoveIndex = 0) => {
 
 // -----fin----------------------------- Movimientos
 
+// --- carga texturas rubik -----------------------
+
+function cargaTexturasRubik(url, cara) {
+  globals.texturas[cara] = new THREE.TextureLoader().load( url );
+  globals.puzzleGroup.children.forEach(ficha => { 
+    ficha.children.forEach(elMesh => { 
+      if (elMesh.name == cara) {
+        elMesh.material.map = globals.texturas[cara]
+      }
+    })
+  })
+}
+// ----fin------------------------------------------- carga texturas rubik
+
 // --- InterAction ----------------------------
 
 var raycaster = new THREE.Raycaster();
@@ -371,11 +387,14 @@ globals.cuboClick = new THREE.Vector3()
 
 function orbitStart ( ) {
   //console.log('De orbitStart')
+  //cargaTexturasRubik('maps/TestA.jpg', 2)
+  
   mouseOrbit.x = ( globals.controls.getStartCoords().x / window.innerWidth ) * 2 - 1
   mouseOrbit.y = - ( globals.controls.getStartCoords().y / window.innerHeight ) * 2 + 1
   raycaster.setFromCamera(mouseOrbit, globals.camera);
   var intersects = raycaster.intersectObjects(globals.scene.children, true);
-  if (intersects.length > 0) {
+  if (intersects.length > 0 && intersects[0].object.parent.name == "Ficha") {
+    //console.log(intersects[0].object.parent.name)
     globals.controls.enableRotate = false;
     globals.cuboClick = intersects[0].object.parent.position
   } else {
@@ -456,7 +475,9 @@ var animate = function() {
   globals.renderer.render(globals.scene, globals.camera)
   globals.renderer2.render(globals.scene, globals.camera);
   stats.update();
-  
+  //console.log( globals.camera.position)
+  //console.log( globals.camera.quaternion)
+  //console.log( globals.scene.getObjectByName( "luna" ).position)
 }
 
 const init = async () => {
@@ -478,8 +499,9 @@ const init = async () => {
   globals.scene = new THREE.Scene()
   globals.scene.background = new THREE.Color(0x000000)
   globals.camera = new THREE.PerspectiveCamera(34, w / h, 1, 100)
-  globals.camera.position.set(0, 0, 12)
-  globals.camera.lookAt(new THREE.Vector3(0, 0, 0))
+  //globals.camera.position.set(0, 0, 12)
+  //globals.camera.lookAt(new THREE.Vector3(0, 0, 0))
+  //globals.camera.position.set(-26, 0, 0)
   globals.scene.add(globals.camera)
   
   globals.controls = new OrbitControls(globals.camera, globals.renderer.domElement)
@@ -509,26 +531,23 @@ const init = async () => {
   const element = document.createElement( 'div' );
   element.className = 'element';
   element.style.backgroundColor = 'rgba(0,127,127,' + ( Math.random() * 0.5 + 0.25 ) + ')';
-
-  //element.parentNode.style.transform = "translate(0,0)"
+  element.style.pointerEvents = "none";
 
   const symbol = document.createElement( 'div' );
   symbol.className = 'symbol';
   symbol.textContent = 'AAAOOOHHHHH!!';
+  symbol.style.pointerEvents = "none";
+  symbol.style.fontSize = "0.5em"; 
   element.appendChild( symbol );
 
   const objectCSS = new CSS3DObject( element );
-  objectCSS.position.x = 0
-  objectCSS.position.y = 0
-  objectCSS.position.z = 0
+  objectCSS.position.x = 2;
+  objectCSS.position.y = 0;
+  objectCSS.position.z = 300;
   globals.scene.add( objectCSS );
-
+  //console.log(objectCSS)
   //objects.push( objectCSS );
-/*
-  const object = new THREE.Object3D();
-  object.position.x = 3;
-  object.position.y = 0;
-*/
+
   
   /*
   labelRenderer = new CSS2DRenderer();
@@ -584,6 +603,57 @@ const init = async () => {
   //console.log( pieceGeometry.faces );
   
   createUiPieces(globals.cube, pieceGeometry)
+
+  // - Luna --------------------------------
+  const cargaLuna = url => new Promise(
+    (resolve, reject) => {
+      const loader = new GLTFLoader()
+      const dracoLoader = new DRACOLoader();
+      dracoLoader.setDecoderPath( 'draco/' );
+      loader.setDRACOLoader( dracoLoader );
+
+      loader.load(
+        url,
+        gltf => {
+          globals.scene.add( gltf.scene )
+          gltf.scene.name = "luna"
+          resolve(gltf.scene)
+          /*
+          const bufferGeometry = gltf.scene.children[0].geometry
+          const geometry = new THREE.Geometry()
+          geometry.fromBufferGeometry(bufferGeometry)
+          resolve(geometry)
+          */
+        },
+        function ( xhr ) {
+          console.log( ( xhr.loaded / xhr.total * 100 ) + '% cargado de luna' );
+        },
+        reject)
+    }
+  )
+
+  const luna = await cargaLuna('models/lunaFinal.glb')
+  luna.position.set(-24,0,0)
+  var targetQuaternion = new THREE.Quaternion();
+  targetQuaternion.setFromEuler( new THREE.Euler( -0.4*Math.PI, 0.33*Math.PI, 0.2*Math.PI ) );
+  luna.quaternion.slerp(targetQuaternion, 1)
+  
+  globals.camera.position.x = luna.position.x - 2
+  globals.camera.lookAt(luna.position) //_x: 0, _y: -0.7071067811865475, _z: 0, _w: 0.7071067811865476
+  //globals.camera.quaternion.slerp(luna.quaternion, 1)
+  //globals.camera.quaternion.slerp(targetQuaternion, 1)
+  //globals.camera.lookAt(luna.position)
+  /*
+  globals.camera.quaternion.slerp(luna.quaternion, 1)
+  globals.controls.target = luna.position
+  globals.camera.position.x -= 1
+  */
+
+// ----fin------------------------------------------- Luna
+
+
+  
+  //console.log(globals.texturas[0])
 
   animate()
   //scramble()
