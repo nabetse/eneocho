@@ -4,7 +4,8 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
-import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
+//import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
+import { CSS3DRenderer, CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRenderer.js';
 import * as L from '../logic'
 import * as U from '../logic/utils'
 
@@ -16,6 +17,7 @@ const DELAY_MS = 1000
 const globals = {
   cube: undefined,
   renderer: undefined,
+  renderer2: undefined,
   camera: undefined,
   scene: undefined,
   puzzleGroup: undefined,
@@ -435,9 +437,9 @@ function orbitChange ( ) {
 
 // --- fin ------------------------------------InterAction ----
 
-// --- GUI -----------------------------------
-var labelRenderer
-// -----fin----------------------------- GUI
+// --- infoGUI -----------------------------------
+
+// -----fin----------------------------------- infoGUI
 
 // -- ayudas
 let stats;
@@ -452,7 +454,7 @@ var animate = function() {
   const delta = globals.clock.getDelta() * globals.animationMixer.timeScale
   globals.animationMixer.update(delta)
   globals.renderer.render(globals.scene, globals.camera)
-  //labelRenderer.render(globals.scene, globals.camera);
+  globals.renderer2.render(globals.scene, globals.camera);
   stats.update();
   
 }
@@ -461,17 +463,11 @@ const init = async () => {
 
   const w = window.innerWidth
   const h = window.innerHeight
-  globals.renderer = new THREE.WebGLRenderer({ antialias: true })
+  globals.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
   globals.renderer.setClearColor("#000000")
   globals.renderer.setSize(w, h)
   document.body.appendChild(globals.renderer.domElement);
-/*
-  labelRenderer = new CSS2DRenderer();
-  labelRenderer.setSize( window.innerWidth, window.innerHeight );
-  labelRenderer.domElement.style.position = 'absolute';
-  labelRenderer.domElement.style.top = '0px';
-  document.body.appendChild( labelRenderer.domElement );
-  */  
+
   window.addEventListener('resize', () => {
     globals.renderer.setSize(window.innerWidth,window.innerHeight)
     //labelRenderer.setSize( window.innerWidth, window.innerHeight );
@@ -500,7 +496,52 @@ const init = async () => {
 
   //globals.controls.autoRotate = true
   //globals.controls.autoRotateSpeed = 1.0
+
+  // CRITICO INTEGRACION posiciones y DOM
+  globals.renderer2 = new CSS3DRenderer();
+  globals.renderer2.setSize(w,h);
+  const infoContainer = globals.renderer2.domElement
+  infoContainer.style.position = 'absolute';
+  infoContainer.style.top = 0;
+  infoContainer.style.pointerEvents = "none";
+  document.body.appendChild( infoContainer );
+
+  const element = document.createElement( 'div' );
+  element.className = 'element';
+  element.style.backgroundColor = 'rgba(0,127,127,' + ( Math.random() * 0.5 + 0.25 ) + ')';
+
+  //element.parentNode.style.transform = "translate(0,0)"
+
+  const symbol = document.createElement( 'div' );
+  symbol.className = 'symbol';
+  symbol.textContent = 'AAAOOOHHHHH!!';
+  element.appendChild( symbol );
+
+  const objectCSS = new CSS3DObject( element );
+  objectCSS.position.x = 0
+  objectCSS.position.y = 0
+  objectCSS.position.z = 0
+  globals.scene.add( objectCSS );
+
+  //objects.push( objectCSS );
+/*
+  const object = new THREE.Object3D();
+  object.position.x = 3;
+  object.position.y = 0;
+*/
   
+  /*
+  labelRenderer = new CSS2DRenderer();
+  labelRenderer.setSize( window.innerWidth, window.innerHeight );
+  labelRenderer.domElement.style.position = 'absolute';
+  labelRenderer.domElement.style.top = '0px';
+  document.body.appendChild( labelRenderer.domElement );
+  */
+  // --
+  //globals.renderer.domElement.style.zIndex = "2";
+  //globals.renderer2.domElement.style.zIndex = "1";
+  
+
   const LIGHT_COLOUR = 0xffffff
   const LIGHT_INTENSITY = 1.2
   const LIGHT_DISTANCE = 10
