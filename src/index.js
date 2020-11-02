@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { GUI } from "three/examples/jsm/libs/dat.gui.module.js";
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 //import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { CSS3DRenderer, CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRenderer.js';
@@ -499,14 +500,14 @@ const init = async () => {
   globals.scene = new THREE.Scene()
   globals.scene.background = new THREE.Color(0x000000)
   globals.camera = new THREE.PerspectiveCamera(34, w / h, 1, 100)
-  //globals.camera.position.set(0, 0, 12)
+  globals.camera.position.set(0, 0, 12)
   //globals.camera.lookAt(new THREE.Vector3(0, 0, 0))
   //globals.camera.position.set(-26, 0, 0)
   globals.scene.add(globals.camera)
   
   globals.controls = new OrbitControls(globals.camera, globals.renderer.domElement)
-  globals.controls.minDistance = 2.0
-  globals.controls.maxDistance = 40.0
+  //globals.controls.minDistance = 2.0
+  //globals.controls.maxDistance = 40.0
   globals.controls.enableDamping = true
   globals.controls.dampingFactor = 0.9
 
@@ -559,16 +560,15 @@ const init = async () => {
   // --
   //globals.renderer.domElement.style.zIndex = "2";
   //globals.renderer2.domElement.style.zIndex = "1";
-  
 
-  const LIGHT_COLOUR = 0xffffff
-  const LIGHT_INTENSITY = 1.2
-  const LIGHT_DISTANCE = 10
 
-  const light1 = new THREE.DirectionalLight(LIGHT_COLOUR, LIGHT_INTENSITY)
-  light1.position.set(0, 0, LIGHT_DISTANCE)
+  let ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+  globals.scene.add(ambientLight);
+
+  const light1 = new THREE.DirectionalLight(0xffe7af, 2.6)
+  light1.position.set(-1.9, 0, 10)
   globals.scene.add(light1)
-
+/*
   const light2 = new THREE.DirectionalLight(LIGHT_COLOUR, LIGHT_INTENSITY)
   light2.position.set(0, 0, -LIGHT_DISTANCE)
   globals.scene.add(light2)
@@ -588,7 +588,7 @@ const init = async () => {
   const light6 = new THREE.DirectionalLight(LIGHT_COLOUR, LIGHT_INTENSITY)
   light6.position.set(-LIGHT_DISTANCE, 0, 0)
   globals.scene.add(light6)
-
+*/
   globals.puzzleGroup = new THREE.Group()
   globals.scene.add(globals.puzzleGroup)
 
@@ -617,6 +617,7 @@ const init = async () => {
         gltf => {
           globals.scene.add( gltf.scene )
           gltf.scene.name = "luna"
+
           resolve(gltf.scene)
           /*
           const bufferGeometry = gltf.scene.children[0].geometry
@@ -633,24 +634,92 @@ const init = async () => {
   )
 
   const luna = await cargaLuna('models/lunaFinal.glb')
-  luna.position.set(-24,0,0)
+  luna.position.set(-6.2,5.5,-20)
   var targetQuaternion = new THREE.Quaternion();
-  targetQuaternion.setFromEuler( new THREE.Euler( -0.4*Math.PI, 0.33*Math.PI, 0.2*Math.PI ) );
+  //targetQuaternion.setFromEuler( new THREE.Euler( -0.4*Math.PI, 0.33*Math.PI, 0.2*Math.PI ) );
+  // _x: -0.13371934954966047, _y: 0.6285350802718854, _z: -0.2723110640626687
+  targetQuaternion.setFromEuler( new THREE.Euler( -0.1*Math.PI, 0.2*Math.PI, 0*Math.PI ) );
   luna.quaternion.slerp(targetQuaternion, 1)
-  
-  globals.camera.position.x = luna.position.x - 2
-  globals.camera.lookAt(luna.position) //_x: 0, _y: -0.7071067811865475, _z: 0, _w: 0.7071067811865476
-  //globals.camera.quaternion.slerp(luna.quaternion, 1)
-  //globals.camera.quaternion.slerp(targetQuaternion, 1)
-  //globals.camera.lookAt(luna.position)
-  /*
-  globals.camera.quaternion.slerp(luna.quaternion, 1)
+  //console.log(luna.quaternion)
+
+
   globals.controls.target = luna.position
-  globals.camera.position.x -= 1
-  */
+  
+  globals.camera.position.set(-5.628045270470402, 5.956742912199839, -22.062863252638003)
+  //ver updateCamRot abajo para camara rot inicial 
+  //globals.camera.lookAt(luna.position)
+  //console.log(globals.camera.quaternion)
+
+function updateCamara() {
+  console.log(globals.camera.position)
+  globals.camera.updateMatrixWorld();
+}
+
+function updateLuna() {
+  //console.log(luna.position)
+  luna.updateMatrixWorld();
+}
+updateLuna();
+
+var eulerLunaRot = new THREE.Euler(-0.13371934954966047,0.6285350802718854,-0.2723110640626687)
+
+function updateLunaRot() {
+  var targetQuaternion = new THREE.Quaternion();
+  targetQuaternion.setFromEuler( eulerLunaRot )
+  //console.log(eulerRot)
+  luna.quaternion.slerp(targetQuaternion, 1)
+  luna.updateMatrixWorld();
+}
+//updateLunaRot();
+
+var eulerCamRot = new THREE.Euler(2.9989255513112907, -0.20301520680616436, -1.450340637423239)
+
+//var eulerCamRot = new THREE.Euler().setFromQuaternion( globals.camera.quaternion, 'XYZ' );
+
+function updateCamRot() {
+  var targetQuaternion = new THREE.Quaternion();
+  targetQuaternion.setFromEuler( eulerCamRot )
+  console.log('RotCamera :')
+  console.log(eulerCamRot)
+  globals.camera.quaternion.slerp(targetQuaternion, 1)
+  globals.camera.updateMatrixWorld();
+}
+updateCamRot();
+
 
 // ----fin------------------------------------------- Luna
 
+// ---- helper GUI -----------------------
+
+const gui = new GUI();
+
+const camPosFolder = gui.addFolder('CameraPos');
+camPosFolder.add(globals.camera.position, 'x', globals.camera.position.x-2, globals.camera.position.x+2).onChange(updateCamara);
+camPosFolder.add(globals.camera.position, 'y', globals.camera.position.y-2, globals.camera.position.y+2).onChange(updateCamara);
+camPosFolder.add(globals.camera.position, 'z', globals.camera.position.z-2, globals.camera.position.x+2).onChange(updateCamara);
+camPosFolder.open();
+
+const camRotFolder = gui.addFolder('CameraRot');
+camRotFolder.add(eulerCamRot, 'x', -Math.PI, Math.PI).onChange(updateCamRot);
+camRotFolder.add(eulerCamRot, 'y', -Math.PI, Math.PI).onChange(updateCamRot);
+camRotFolder.add(eulerCamRot, 'z', -1.3, -1.6).onChange(updateCamRot);
+camRotFolder.open();
+
+gui.add(light1, 'intensity', 0, 2, 0.01);
+
+const posFolder = gui.addFolder('LunaPos');
+posFolder.add(luna.position, 'x', -10, 10).onChange(updateLuna);
+posFolder.add(luna.position, 'y', -2, 10).onChange(updateLuna);
+posFolder.add(luna.position, 'z', -30, 0).onChange(updateLuna);
+posFolder.open();
+
+const rotFolder = gui.addFolder('LunaRot');
+rotFolder.add(eulerLunaRot, 'x', -Math.PI, Math.PI).onChange(updateLunaRot);
+rotFolder.add(eulerLunaRot, 'y', -Math.PI, Math.PI).onChange(updateLunaRot);
+rotFolder.add(eulerLunaRot, 'z', -Math.PI, Math.PI).onChange(updateLunaRot);
+rotFolder.open();
+
+// ----fin------------------------------------------- helper GUI 
 
   
   //console.log(globals.texturas[0])
