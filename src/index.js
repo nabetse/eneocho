@@ -1,13 +1,8 @@
 import './style.css';
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
-import { GUI } from "three/examples/jsm/libs/dat.gui.module.js";
-//import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
-//import { CSS3DRenderer, CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRenderer.js';
 import { TimelineMax } from "gsap/all"; 
 import * as L from '../logic'
 import * as U from '../logic/utils'
@@ -26,7 +21,6 @@ const globals = {
   scene: undefined,
   puzzleGroup: undefined,
   animationGroup: undefined,
-  controls: undefined,
   clock: undefined,
   animationMixer: undefined,
   mueveCamara: undefined,
@@ -384,104 +378,9 @@ function cargaTexturasRubik(url, cara) {
 }
 // ----fin------------------------------------------- carga texturas rubik
 
-// --- InterAction ----------------------------
-
-var raycaster = new THREE.Raycaster();
-var mouseOrbit = new THREE.Vector2();
-globals.cuboClick = new THREE.Vector3()
-
-function orbitStart ( ) {
-  //console.log('De orbitStart')
-  //cargaTexturasRubik('maps/TestA.jpg', 2)
-  
-  mouseOrbit.x = ( globals.controls.getStartCoords().x / window.innerWidth ) * 2 - 1
-  mouseOrbit.y = - ( globals.controls.getStartCoords().y / window.innerHeight ) * 2 + 1
-  raycaster.setFromCamera(mouseOrbit, globals.camera);
-  var intersects = raycaster.intersectObjects(globals.scene.children, true);
-  if (intersects.length > 0 && intersects[0].object.parent.name == "Ficha") {
-    //console.log(intersects[0].object.parent.name)
-    globals.controls.enableRotate = false;
-    globals.cuboClick = intersects[0].object.parent.position
-  } else {
-    globals.controls.enableRotate = true;
-    globals.cuboClick = NaN
-  }
-  //console.log(mouseOrbit);
-}
-
-function orbitEnd ( ) {
-  //console.log('De orbitEnd')
-  globals.controls.enableRotate = true;
-  if (typeof globals.cuboClick.x !== 'undefined' && girando == false) {
-    let mouseUp = new THREE.Vector2();
-    mouseUp.x = ( globals.controls.getEndCoords().x / window.innerWidth ) * 2 - 1
-    mouseUp.y = - ( globals.controls.getEndCoords().y / window.innerHeight ) * 2 + 1
-    let deltaMouse = new THREE.Vector2();
-    deltaMouse.x = (mouseUp.x - mouseOrbit.x) * window.innerWidth
-    deltaMouse.y = (mouseUp.y - mouseOrbit.y) * window.innerHeight
-    //console.log('Con inicio x en ' + mouseOrbit.x + ' terminando en ' + mouseUp.x + 'deltaX = ' + deltaMouse.x)
-    //console.log('Con inicio y en ' + mouseOrbit.y + ' terminando en ' + mouseUp.y + 'deltaY = ' + deltaMouse.y)
-    if (Math.abs(deltaMouse.x) > Math.abs(deltaMouse.y)) { // mov horizontal
-      //console.log('horizontal')
-      if (deltaMouse.x < 0 && globals.cuboClick) { // mov a la izquierda
-        if (globals.cuboClick.y == 1) muevelo(10)
-        else if (globals.cuboClick.y == 0) muevelo(8)
-        else if (globals.cuboClick.y == -1) muevelo(6)
-      } else  { // mov a la derecha
-        if (globals.cuboClick.y == 1) muevelo(11)
-        else if (globals.cuboClick.y == 0) muevelo(9)
-        else if (globals.cuboClick.y == -1) muevelo(7)
-      }
-    } 
-    else if (Math.abs(deltaMouse.x) < Math.abs(deltaMouse.y)){ // mov vertical
-      //console.log('vertical')
-      if (deltaMouse.y > 0) { // mov arriba
-        if (globals.cuboClick.x == 1) muevelo(4)
-        else if (globals.cuboClick.x == 0) muevelo(2)
-        else if (globals.cuboClick.x == -1) muevelo(0)
-      } else { // mov abajo
-        if (globals.cuboClick.x == 1) muevelo(5)
-        else if (globals.cuboClick.x == 0) muevelo(3)
-        else if (globals.cuboClick.x == -1) muevelo(1)
-      }
-
-    }
-  } else {
-    console.log('Desde orbitEnd')
-    console.log(globals.camera.position)
-    let eulerCam = new THREE.Euler().setFromQuaternion(globals.camera.quaternion)
-    //eu.setFromQuaternion(globals.camera.quaternion, 'XYZ', true)
-    console.log(eulerCam)
-  }
-  globals.cuboClick = NaN
-}
-
-/*
-function orbitChange ( ) {
-  //console.log(globals.controls.getAzimuthalAngle());
-  console.log(globals.controls.getAzimuthalAngle());
-  console.log(globals.controls.getPolarAngle());
-}
-*/
-
-// --- fin ------------------------------------InterAction ----
-
-// --- infoGUI -----------------------------------
-
-// -----fin----------------------------------- infoGUI
-
-// -- ayudas
-/*
-let stats;
-stats = new Stats();
-document.body.appendChild( stats.dom );
-*/
-// -----fin----------------------------- ayudas
-
 // ---- Threejs SETUP
 var animate = function() {
   window.requestAnimationFrame(animate)
-  //globals.controls.update();
   const delta = globals.clock.getDelta() * globals.animationMixer.timeScale
   globals.animationMixer.update(delta)
 
@@ -489,10 +388,7 @@ var animate = function() {
   globals.renderer.render(globals.scene, globals.camera)
   //globals.renderer2.render(globals.scene, globals.camera);
   globals.labelRenderer.render(globals.scene, globals.camera);
-  //stats.update();
-  //console.log( globals.camera.position)
-  //console.log( globals.camera.quaternion)
-  //console.log( globals.scene.getObjectByName( "luna" ).position)
+
 }
 
 const init = async () => {
@@ -514,43 +410,9 @@ const init = async () => {
   globals.scene = new THREE.Scene()
   globals.scene.background = new THREE.Color(0x000000)
   globals.camera = new THREE.PerspectiveCamera(34, w / h, 0.2, 100)
-  //globals.camera.position.set(0, 0, 12)
-  //globals.camera.lookAt(new THREE.Vector3(0, 0, 0))
-  //globals.camera.position.set(-26, 0, 0)
+
   globals.scene.add(globals.camera)
-  
-  globals.controls = new OrbitControls(globals.camera, globals.renderer.domElement)
-  //globals.controls = new PointerLockControls(globals.camera, globals.renderer.domElement)
-  //globals.controls.minDistance = 2.0
-  //globals.controls.maxDistance = 40.0
-  globals.controls.enableDamping = true
-  globals.controls.dampingFactor = 0.9
-
-  //globals.controls.addEventListener( 'pointerdown',orbitDown ,false ); //el true es para useCapture, aggarando el evento antes de la parada de propagaciones
-  //globals.controls.addEventListener( 'mouseup',orbitUp ,false );
-  //globals.controls.addEventListener( 'change',orbitChange ,false );
-  globals.controls.addEventListener( 'start',orbitStart ,false );
-  globals.controls.addEventListener( 'end',orbitEnd ,false );
-  //globals.scene.add( globals.controls.getObject() );
-
-  //globals.controls.autoRotate = true
-  //globals.controls.autoRotateSpeed = 1.0
-
-  // CRITICO INTEGRACION posiciones y DOM
-  /*
-  globals.renderer2 = new CSS3DRenderer();
-  globals.renderer2.setSize(w,h);
-  const infoContainer = globals.renderer2.domElement
-  infoContainer.className = 'infoContainer';
-  infoContainer.style.position = 'absolute';
-  infoContainer.style.top = 0;
-  infoContainer.style.pointerEvents = "none";
-  document.body.appendChild( infoContainer );
-*/
-  //console.log(objectCSS)
-  //objects.push( objectCSS );
-
-  
+ 
   
   globals.labelRenderer = new CSS2DRenderer();
   globals.labelRenderer.setSize( window.innerWidth, window.innerHeight );
@@ -559,10 +421,6 @@ const init = async () => {
   globals.labelRenderer.domElement.style.top = 0
   globals.labelRenderer.domElement.style.pointerEvents = "none";
   document.body.appendChild( globals.labelRenderer.domElement );
-  
-  // --
-  //globals.renderer.domElement.style.zIndex = "2";
-  //globals.renderer2.domElement.style.zIndex = "1";
 
 
   let ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -571,27 +429,7 @@ const init = async () => {
   const light1 = new THREE.DirectionalLight(0xffe7af, 2.6)
   light1.position.set(-1.9, 0, 10)
   globals.scene.add(light1)
-/*
-  const light2 = new THREE.DirectionalLight(LIGHT_COLOUR, LIGHT_INTENSITY)
-  light2.position.set(0, 0, -LIGHT_DISTANCE)
-  globals.scene.add(light2)
 
-  const light3 = new THREE.DirectionalLight(LIGHT_COLOUR, LIGHT_INTENSITY)
-  light3.position.set(0, LIGHT_DISTANCE, 0)
-  globals.scene.add(light3)
-
-  const light4 = new THREE.DirectionalLight(LIGHT_COLOUR, LIGHT_INTENSITY)
-  light4.position.set(0, -LIGHT_DISTANCE, 0)
-  globals.scene.add(light4)
-
-  const light5 = new THREE.DirectionalLight(LIGHT_COLOUR, LIGHT_INTENSITY)
-  light5.position.set(LIGHT_DISTANCE, 0, 0)
-  globals.scene.add(light5)
-
-  const light6 = new THREE.DirectionalLight(LIGHT_COLOUR, LIGHT_INTENSITY)
-  light6.position.set(-LIGHT_DISTANCE, 0, 0)
-  globals.scene.add(light6)
-*/
   globals.puzzleGroup = new THREE.Group()
   globals.scene.add(globals.puzzleGroup)
 
@@ -622,15 +460,8 @@ const init = async () => {
           gltf.scene.name = "luna"
 
           resolve(gltf.scene)
-          /*
-          const bufferGeometry = gltf.scene.children[0].geometry
-          const geometry = new THREE.Geometry()
-          geometry.fromBufferGeometry(bufferGeometry)
-          resolve(geometry)
-          */
         },
         function ( xhr ) {
-          //console.log( ( xhr.loaded / xhr.total * 100 ) + '% cargado de luna' );
         },
         reject)
     }
@@ -659,16 +490,12 @@ const init = async () => {
   updateLunaRot();
 
   // CAMERA
-//globals.camera.position.set(0,0,0)
-//globals.controls.target = luna.position
 
 globals.camera.position.set(-7.847180991362698, 4.8207409610185366, -20.06869711736424)
 
 function updateCamaraPos() {
   //console.log("updateCamaraPos :")
   globals.camera.updateMatrixWorld();
-  //globals.controls.update();
-  //console.log(globals.camera.position)
 }
 updateCamaraPos()
 
@@ -682,9 +509,7 @@ function updateCamRot() {
   //console.log(eulerCamRot)
   globals.camera.quaternion.slerp(targetQuaternion, 1)
   globals.camera.updateMatrixWorld();
-  //let eulerCam = new THREE.Euler().setFromQuaternion(globals.camera.quaternion)
-    //eu.setFromQuaternion(globals.camera.quaternion, 'XYZ', true)
-  //console.log(eulerCam)
+  
 }
 updateCamRot();
 
@@ -713,49 +538,6 @@ crisiumDiv.style.color = "#ffffff";
 const crisiumLabel = new CSS2DObject( crisiumDiv );
 crisiumLabel.position.set( -6.85, 5.35, -18.92); // Mar de la Crisis coords
 globals.scene.add( crisiumLabel );
-
-//globals.controls.target = crisiumLabel.position
-// Superutil AXESHELPER
-//var ejesDelLabel = new THREE.AxesHelper(3)
-//ejesDelLabel.position.copy(crisiumLabel.position)
-//globals.scene.add(ejesDelLabel)
-
-/* intento con CSS3D --------------------------------
-const element = document.createElement( 'div' );
-  element.className = 'element';
-  element.style.backgroundColor = 'rgba(0,127,127,' + ( Math.random() * 0.5 + 0.25 ) + ')';
-  element.style.pointerEvents = "none";
-  element.style.width = '3px';
-  element.style.height = '1px';
-
-  const symbol = document.createElement( 'div' );
-  symbol.className = 'symbol';
-  symbol.textContent = 'Mar de la Crisis';
-  symbol.style.pointerEvents = "none";
-  symbol.style.fontSize = "1px"; 
-  symbol.style.color = "#ffffff";
-  element.appendChild( symbol );
-
-  const objectCSS = new CSS3DObject( element );
-  objectCSS.position.x = -6.917661777163147;
-  objectCSS.position.y = 5.220878820746264;
-  objectCSS.position.z = -18.874487225928778;
-  globals.scene.add( objectCSS );
-
-  globals.controls.target = objectCSS.position
-//globals.controls.lock();
-*/
-
-/*
-var tl = new TimelineMax();
-tl.TweenLite.to(eulerCamRot, 20, {x: -1.213722263523325, ease: Expo.easeOut, onUpadate:updateCamRot})
-//(this, 5, { tweenValue:1, cameraZoom:zoom, onUpdate:onSlerpUpdate })
-*/
-
-
-
-
-//2.749639750543726, _y: -0.7332943355383251, _z: 
 
 // ----fin------------------------------------------- Luna
 // Movimientos Camara --------------
@@ -798,69 +580,13 @@ setTimeout (function() { globals.mueveCamara(3) }, 52000);
 setTimeout (function() { globals.mueveCamara(4) }, 68000);
 setTimeout (function() { globals.mueveCamara(5) }, 70000);
 
-/*
-setTimeout (function() { muevelo(7) }, 80000); //franja roja
-setTimeout (function() { muevelo(8) }, 82000); //franja azul
-*/
-
 setTimeout(myURL, 80000);
 function myURL(){
-  //window.open('http://n8.cara-cara.tv/eneocho', _self);
-  window.location.href = "http://n8.cara-cara.tv/eneocho";
+  window.location.href = "http://n8.cara-cara.tv";
 }
-/*I
-var uno = setTimeout(mueveCamara(0),5000)
-//setTimeout(mueveCamara(1),2000)
-*/
 
-/*
-// ---- helper GUI -----------------------
-function creaGui() {
-  const gui = new GUI();
-
-  const camPosFolder = gui.addFolder('CameraPos');
-  camPosFolder.add(globals.camera.position, 'x', globals.camera.position.x-2, globals.camera.position.x+2).onChange(updateCamaraPos).listen();
-  camPosFolder.add(globals.camera.position, 'y', globals.camera.position.y-2, globals.camera.position.y+2).onChange(updateCamaraPos).listen();
-  camPosFolder.add(globals.camera.position, 'z', globals.camera.position.z-2, globals.camera.position.z+2).onChange(updateCamaraPos).listen();
-  camPosFolder.open();
-
-  const camSimRotFolder = gui.addFolder('simpleCamRot');
-  camSimRotFolder.add(globals.camera.rotation, 'x', globals.camera.rotation.x-Math.PI, globals.camera.rotation.x+Math.PI).onChange(updateSimCamRot).listen();
-  camSimRotFolder.add(globals.camera.rotation, 'y', globals.camera.rotation.y-Math.PI, globals.camera.rotation.y+Math.PI).onChange(updateSimCamRot).listen();
-  camSimRotFolder.add(globals.camera.rotation, 'z', globals.camera.rotation.z-Math.PI, globals.camera.rotation.z+Math.PI).onChange(updateSimCamRot).listen();
-  camSimRotFolder.open();
-
-  const camRotFolder = gui.addFolder('CameraRot');
-  let eulerCam = new THREE.Euler().setFromQuaternion(globals.camera.quaternion)
-  camRotFolder.add(eulerCamRot, 'x', eulerCam.x-Math.PI, eulerCam.x+Math.PI).onChange(updateCamRot).listen();
-  camRotFolder.add(eulerCamRot, 'y', eulerCam.y-Math.PI, eulerCam.y+Math.PI).onChange(updateCamRot).listen();
-  camRotFolder.add(eulerCamRot, 'z', eulerCam.z-Math.PI, eulerCam.z+Math.PI).onChange(updateCamRot).listen();
-  camRotFolder.open();
-
-  gui.add(light1, 'intensity', 0, 2, 0.01);
-
-  const posFolder = gui.addFolder('LunaPos');
-  posFolder.add(luna.position, 'x', -10, 10).onChange(updateLunaPos);
-  posFolder.add(luna.position, 'y', -2, 10).onChange(updateLunaPos);
-  posFolder.add(luna.position, 'z', -30, 0).onChange(updateLunaPos);
-  posFolder.open();
-
-  const rotFolder = gui.addFolder('LunaRot');
-  rotFolder.add(eulerLunaRot, 'x', -Math.PI, Math.PI).onChange(updateLunaRot);
-  rotFolder.add(eulerLunaRot, 'y', -Math.PI, Math.PI).onChange(updateLunaRot);
-  rotFolder.add(eulerLunaRot, 'z', -Math.PI, Math.PI).onChange(updateLunaRot);
-  rotFolder.open();
-
-}
-creaGui()
-  */
 // ----fin------------------------------------------- helper GUI 
-
-  
-  //console.log(globals.texturas[0])
-
   animate()
-  //scramble()
 }
 
 init()
