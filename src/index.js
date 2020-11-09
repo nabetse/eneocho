@@ -806,7 +806,7 @@ setTimeout (function() { muevelo(8) }, 82000); //franja azul
 setTimeout(myURL, 80000);
 function myURL(){
   //window.open('http://n8.cara-cara.tv/eneocho', _self);
-  window.location.href("http://n8.cara-cara.tv/eneocho");
+  window.location.href = "http://n8.cara-cara.tv/eneocho";
 }
 /*I
 var uno = setTimeout(mueveCamara(0),5000)
