@@ -1,12 +1,14 @@
 import './style.css';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { GUI } from "three/examples/jsm/libs/dat.gui.module.js";
 import Stats from 'three/examples/jsm/libs/stats.module.js';
-//import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { CSS3DRenderer, CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRenderer.js';
+import { TimelineMax } from "gsap/all"; 
 import * as L from '../logic'
 import * as U from '../logic/utils'
 
@@ -19,6 +21,7 @@ const globals = {
   cube: undefined,
   renderer: undefined,
   renderer2: undefined,
+  labelRenderer: undefined,
   camera: undefined,
   scene: undefined,
   puzzleGroup: undefined,
@@ -26,6 +29,7 @@ const globals = {
   controls: undefined,
   clock: undefined,
   animationMixer: undefined,
+  mueveCamara: undefined,
   cuboClick: undefined,
   texturas: undefined
 }
@@ -442,9 +446,14 @@ function orbitEnd ( ) {
       }
 
     }
+  } else {
+    console.log('Desde orbitEnd')
+    console.log(globals.camera.position)
+    let eulerCam = new THREE.Euler().setFromQuaternion(globals.camera.quaternion)
+    //eu.setFromQuaternion(globals.camera.quaternion, 'XYZ', true)
+    console.log(eulerCam)
   }
   globals.cuboClick = NaN
-  //console.log('end');
 }
 
 /*
@@ -470,11 +479,14 @@ document.body.appendChild( stats.dom );
 // ---- Threejs SETUP
 var animate = function() {
   window.requestAnimationFrame(animate)
-  //if ( globals.controls.enabled ) globals.controls.update();
+  //globals.controls.update();
   const delta = globals.clock.getDelta() * globals.animationMixer.timeScale
   globals.animationMixer.update(delta)
+
+
   globals.renderer.render(globals.scene, globals.camera)
   globals.renderer2.render(globals.scene, globals.camera);
+  globals.labelRenderer.render(globals.scene, globals.camera);
   stats.update();
   //console.log( globals.camera.position)
   //console.log( globals.camera.quaternion)
@@ -492,20 +504,21 @@ const init = async () => {
 
   window.addEventListener('resize', () => {
     globals.renderer.setSize(window.innerWidth,window.innerHeight)
-    //labelRenderer.setSize( window.innerWidth, window.innerHeight );
+    globals.labelRenderer.setSize( window.innerWidth, window.innerHeight );
     globals.camera.aspect = window.innerWidth / window.innerHeight
     globals.camera.updateProjectionMatrix()
   })
 
   globals.scene = new THREE.Scene()
   globals.scene.background = new THREE.Color(0x000000)
-  globals.camera = new THREE.PerspectiveCamera(34, w / h, 1, 100)
-  globals.camera.position.set(0, 0, 12)
+  globals.camera = new THREE.PerspectiveCamera(34, w / h, 0.2, 100)
+  //globals.camera.position.set(0, 0, 12)
   //globals.camera.lookAt(new THREE.Vector3(0, 0, 0))
   //globals.camera.position.set(-26, 0, 0)
   globals.scene.add(globals.camera)
   
   globals.controls = new OrbitControls(globals.camera, globals.renderer.domElement)
+  //globals.controls = new PointerLockControls(globals.camera, globals.renderer.domElement)
   //globals.controls.minDistance = 2.0
   //globals.controls.maxDistance = 40.0
   globals.controls.enableDamping = true
@@ -516,6 +529,7 @@ const init = async () => {
   //globals.controls.addEventListener( 'change',orbitChange ,false );
   globals.controls.addEventListener( 'start',orbitStart ,false );
   globals.controls.addEventListener( 'end',orbitEnd ,false );
+  //globals.scene.add( globals.controls.getObject() );
 
   //globals.controls.autoRotate = true
   //globals.controls.autoRotateSpeed = 1.0
@@ -524,39 +538,25 @@ const init = async () => {
   globals.renderer2 = new CSS3DRenderer();
   globals.renderer2.setSize(w,h);
   const infoContainer = globals.renderer2.domElement
+  infoContainer.className = 'infoContainer';
   infoContainer.style.position = 'absolute';
   infoContainer.style.top = 0;
   infoContainer.style.pointerEvents = "none";
   document.body.appendChild( infoContainer );
 
-  const element = document.createElement( 'div' );
-  element.className = 'element';
-  element.style.backgroundColor = 'rgba(0,127,127,' + ( Math.random() * 0.5 + 0.25 ) + ')';
-  element.style.pointerEvents = "none";
-
-  const symbol = document.createElement( 'div' );
-  symbol.className = 'symbol';
-  symbol.textContent = 'AAAOOOHHHHH!!';
-  symbol.style.pointerEvents = "none";
-  symbol.style.fontSize = "0.5em"; 
-  element.appendChild( symbol );
-
-  const objectCSS = new CSS3DObject( element );
-  objectCSS.position.x = 2;
-  objectCSS.position.y = 0;
-  objectCSS.position.z = 300;
-  globals.scene.add( objectCSS );
   //console.log(objectCSS)
   //objects.push( objectCSS );
 
   
-  /*
-  labelRenderer = new CSS2DRenderer();
-  labelRenderer.setSize( window.innerWidth, window.innerHeight );
-  labelRenderer.domElement.style.position = 'absolute';
-  labelRenderer.domElement.style.top = '0px';
-  document.body.appendChild( labelRenderer.domElement );
-  */
+  
+  globals.labelRenderer = new CSS2DRenderer();
+  globals.labelRenderer.setSize( window.innerWidth, window.innerHeight );
+  globals.labelRenderer.domElement.className = 'labelRenderer';
+  globals.labelRenderer.domElement.style.position = 'absolute';
+  globals.labelRenderer.domElement.style.top = 0
+  globals.labelRenderer.domElement.style.pointerEvents = "none";
+  document.body.appendChild( globals.labelRenderer.domElement );
+  
   // --
   //globals.renderer.domElement.style.zIndex = "2";
   //globals.renderer2.domElement.style.zIndex = "1";
@@ -634,90 +634,209 @@ const init = async () => {
   )
 
   const luna = await cargaLuna('models/lunaFinal.glb')
+
   luna.position.set(-6.2,5.5,-20)
-  var targetQuaternion = new THREE.Quaternion();
-  //targetQuaternion.setFromEuler( new THREE.Euler( -0.4*Math.PI, 0.33*Math.PI, 0.2*Math.PI ) );
-  // _x: -0.13371934954966047, _y: 0.6285350802718854, _z: -0.2723110640626687
-  targetQuaternion.setFromEuler( new THREE.Euler( -0.1*Math.PI, 0.2*Math.PI, 0*Math.PI ) );
-  luna.quaternion.slerp(targetQuaternion, 1)
-  //console.log(luna.quaternion)
-
-
-  globals.controls.target = luna.position
   
-  globals.camera.position.set(-5.628045270470402, 5.956742912199839, -22.062863252638003)
-  //ver updateCamRot abajo para camara rot inicial 
-  //globals.camera.lookAt(luna.position)
-  //console.log(globals.camera.quaternion)
+  function updateLunaPos() {
+    console.log(luna.position)
+    luna.updateMatrixWorld();
+  }
+  updateLunaPos();
+  
+  var eulerLunaRot = new THREE.Euler(0.004872364963348197, 0.5592392230153811, -0.20301520680616436)
+  function updateLunaRot() {
+    var targetQuaternion = new THREE.Quaternion();
+    targetQuaternion.setFromEuler( eulerLunaRot )
+    console.log(eulerLunaRot)
+    luna.quaternion.slerp(targetQuaternion, 1)
+    luna.updateMatrixWorld();
+    //luna.matrixAutoUpdate = false;
+    //globals.camera.applyMatrix4(luna.matrixWorld)
+  }
+  updateLunaRot();
 
-function updateCamara() {
-  console.log(globals.camera.position)
+  // CAMERA
+//globals.camera.position.set(0,0,0)
+//globals.controls.target = luna.position
+
+globals.camera.position.set(-7.847180991362698, 4.8207409610185366, -20.06869711736424)
+
+function updateCamaraPos() {
+  console.log("updateCamaraPos :")
   globals.camera.updateMatrixWorld();
+  globals.controls.update();
+  console.log(globals.camera.position)
 }
+updateCamaraPos()
 
-function updateLuna() {
-  //console.log(luna.position)
-  luna.updateMatrixWorld();
-}
-updateLuna();
 
-var eulerLunaRot = new THREE.Euler(-0.13371934954966047,0.6285350802718854,-0.2723110640626687)
-
-function updateLunaRot() {
-  var targetQuaternion = new THREE.Quaternion();
-  targetQuaternion.setFromEuler( eulerLunaRot )
-  //console.log(eulerRot)
-  luna.quaternion.slerp(targetQuaternion, 1)
-  luna.updateMatrixWorld();
-}
-//updateLunaRot();
-
-var eulerCamRot = new THREE.Euler(2.9989255513112907, -0.20301520680616436, -1.450340637423239)
-
-//var eulerCamRot = new THREE.Euler().setFromQuaternion( globals.camera.quaternion, 'XYZ' );
-
+var eulerCamRot = new THREE.Euler(2.1214294852743265, -1.2, 1.2043412048072)
+//var target
 function updateCamRot() {
+  console.log('updateCamRot :')
   var targetQuaternion = new THREE.Quaternion();
   targetQuaternion.setFromEuler( eulerCamRot )
-  console.log('RotCamera :')
   console.log(eulerCamRot)
   globals.camera.quaternion.slerp(targetQuaternion, 1)
   globals.camera.updateMatrixWorld();
+  let eulerCam = new THREE.Euler().setFromQuaternion(globals.camera.quaternion)
+    //eu.setFromQuaternion(globals.camera.quaternion, 'XYZ', true)
+  console.log(eulerCam)
 }
 updateCamRot();
 
+function updateSimCamRot() {
+  console.log('updateSimCamRot :')
+  globals.camera.updateMatrixWorld();
+  console.log(globals.camera.rotation)
+}
+
+console.log(globals.camera)
+
+const fecundatisDiv = document.createElement( 'div' );
+fecundatisDiv.className = 'label';
+fecundatisDiv.textContent = 'Mar de la Fecundidad';
+fecundatisDiv.style.marginTop = '-1em';
+fecundatisDiv.style.color = "#ffffff";
+const fecundatisLabel = new CSS2DObject( fecundatisDiv );
+fecundatisLabel.position.set( -6.7, 5.62, -18.75);
+globals.scene.add( fecundatisLabel );
+
+const crisiumDiv = document.createElement( 'div' );
+crisiumDiv.className = 'label';
+crisiumDiv.textContent = 'Mar de la Crisis';
+crisiumDiv.style.marginTop = '-1em';
+crisiumDiv.style.color = "#ffffff";
+const crisiumLabel = new CSS2DObject( crisiumDiv );
+crisiumLabel.position.set( -6.85, 5.35, -18.92); // Mar de la Crisis coords
+globals.scene.add( crisiumLabel );
+
+//globals.controls.target = crisiumLabel.position
+/* Superutil AXESHELPER
+var ejesDelLabel = new THREE.AxesHelper(1)
+ejesDelLabel.position.copy(crisiumLabel.position)
+globals.scene.add(ejesDelLabel)
+*/
+/* intento con CSS3D --------------------------------
+const element = document.createElement( 'div' );
+  element.className = 'element';
+  element.style.backgroundColor = 'rgba(0,127,127,' + ( Math.random() * 0.5 + 0.25 ) + ')';
+  element.style.pointerEvents = "none";
+  element.style.width = '3px';
+  element.style.height = '1px';
+
+  const symbol = document.createElement( 'div' );
+  symbol.className = 'symbol';
+  symbol.textContent = 'Mar de la Crisis';
+  symbol.style.pointerEvents = "none";
+  symbol.style.fontSize = "1px"; 
+  symbol.style.color = "#ffffff";
+  element.appendChild( symbol );
+
+  const objectCSS = new CSS3DObject( element );
+  objectCSS.position.x = -6.917661777163147;
+  objectCSS.position.y = 5.220878820746264;
+  objectCSS.position.z = -18.874487225928778;
+  globals.scene.add( objectCSS );
+
+  globals.controls.target = objectCSS.position
+//globals.controls.lock();
+*/
+
+/*
+var tl = new TimelineMax();
+tl.TweenLite.to(eulerCamRot, 20, {x: -1.213722263523325, ease: Expo.easeOut, onUpadate:updateCamRot})
+//(this, 5, { tweenValue:1, cameraZoom:zoom, onUpdate:onSlerpUpdate })
+*/
+
+
+
+
+//2.749639750543726, _y: -0.7332943355383251, _z: 
 
 // ----fin------------------------------------------- Luna
+// Movimientos Camara --------------
+
+globals.mueveCamara = cualMov => {
+  switch (cualMov) {
+    case 0:
+      var tween = TweenMax.to(eulerCamRot, 20, {y: -0.733294335538325, ease: Power1.easeInOut, onUpdate:updateCamRot})
+      break;
+    case 1:
+      var tween = TweenMax.to(eulerCamRot, 20, {x: 2.749639750543726, z: 1.5553919217629995, ease: Power1.easeInOut, onUpdate:updateCamRot})
+      break;
+    case 2:
+      // euler -2.909936572930262, _y: -1.0568189442793998, _z: 1.9711312442333986
+      // pos -7.491361227427142, y: 5.441228597789451, z: -19.27176423203642
+      var tweenR = TweenMax.to(eulerCamRot, 20, {x: -2.9, y: -1.0568, z: 1.97, ease: Power1.easeInOut, onUpdate:updateCamRot})
+      var tweenP = TweenMax.to(globals.camera.position, 20, {x: -7.5, y: 5.44, z: -19.27, ease: Power1.easeInOut, onUpdate:updateCamRot})
+      break;
+    case 3:
+      var tweenR = TweenMax.to(eulerCamRot, 20, {y: -0.3639, ease: Power1.easeInOut, onUpdate:updateCamRot})
+      break;
+    case 4: // Pa la Tierra
+      globals.scene.remove(fecundatisLabel)
+      globals.scene.remove(crisiumLabel)
+      var tweenP = TweenMax.to(globals.camera.position, 20, {x: 0, y: 0, z: 12, ease: Power4.easeOut, onUpdate:updateCamRot})
+      //globals.camera.lookAt(new THREE.Vector3(0, 0, 0))
+      break;
+    case 5:
+      //var tweenP = TweenMax.to(globals.camera.lookAt, 20, {x: 0, y: 0, z: 0, ease: Power1.easeInOut, onUpdate:updateCamRot})
+      var tweenR = TweenMax.to(eulerCamRot, 10, {x: 0, y: 0, z: 0, ease: Power1.easeInOut, onUpdate:updateCamRot})
+    }
+}
+
+setTimeout (function() { globals.mueveCamara(0) }, 800)
+setTimeout (function() { globals.mueveCamara(1) }, 10000) //termina en 30
+setTimeout (function() { globals.mueveCamara(2) }, 31000)
+setTimeout (function() { globals.mueveCamara(3) }, 55000)
+setTimeout (function() { globals.mueveCamara(4) }, 75000)
+setTimeout (function() { globals.mueveCamara(5) }, 75100)
+/*
+var uno = setTimeout(mueveCamara(0),5000)
+//setTimeout(mueveCamara(1),2000)
+*/
+
 
 // ---- helper GUI -----------------------
+function creaGui() {
+  const gui = new GUI();
 
-const gui = new GUI();
+  const camPosFolder = gui.addFolder('CameraPos');
+  camPosFolder.add(globals.camera.position, 'x', globals.camera.position.x-2, globals.camera.position.x+2).onChange(updateCamaraPos).listen();
+  camPosFolder.add(globals.camera.position, 'y', globals.camera.position.y-2, globals.camera.position.y+2).onChange(updateCamaraPos).listen();
+  camPosFolder.add(globals.camera.position, 'z', globals.camera.position.z-2, globals.camera.position.z+2).onChange(updateCamaraPos).listen();
+  camPosFolder.open();
 
-const camPosFolder = gui.addFolder('CameraPos');
-camPosFolder.add(globals.camera.position, 'x', globals.camera.position.x-2, globals.camera.position.x+2).onChange(updateCamara);
-camPosFolder.add(globals.camera.position, 'y', globals.camera.position.y-2, globals.camera.position.y+2).onChange(updateCamara);
-camPosFolder.add(globals.camera.position, 'z', globals.camera.position.z-2, globals.camera.position.x+2).onChange(updateCamara);
-camPosFolder.open();
+  const camSimRotFolder = gui.addFolder('simpleCamRot');
+  camSimRotFolder.add(globals.camera.rotation, 'x', globals.camera.rotation.x-Math.PI, globals.camera.rotation.x+Math.PI).onChange(updateSimCamRot).listen();
+  camSimRotFolder.add(globals.camera.rotation, 'y', globals.camera.rotation.y-Math.PI, globals.camera.rotation.y+Math.PI).onChange(updateSimCamRot).listen();
+  camSimRotFolder.add(globals.camera.rotation, 'z', globals.camera.rotation.z-Math.PI, globals.camera.rotation.z+Math.PI).onChange(updateSimCamRot).listen();
+  camSimRotFolder.open();
 
-const camRotFolder = gui.addFolder('CameraRot');
-camRotFolder.add(eulerCamRot, 'x', -Math.PI, Math.PI).onChange(updateCamRot);
-camRotFolder.add(eulerCamRot, 'y', -Math.PI, Math.PI).onChange(updateCamRot);
-camRotFolder.add(eulerCamRot, 'z', -1.3, -1.6).onChange(updateCamRot);
-camRotFolder.open();
+  const camRotFolder = gui.addFolder('CameraRot');
+  let eulerCam = new THREE.Euler().setFromQuaternion(globals.camera.quaternion)
+  camRotFolder.add(eulerCamRot, 'x', eulerCam.x-Math.PI, eulerCam.x+Math.PI).onChange(updateCamRot).listen();
+  camRotFolder.add(eulerCamRot, 'y', eulerCam.y-Math.PI, eulerCam.y+Math.PI).onChange(updateCamRot).listen();
+  camRotFolder.add(eulerCamRot, 'z', eulerCam.z-Math.PI, eulerCam.z+Math.PI).onChange(updateCamRot).listen();
+  camRotFolder.open();
+/*
+  gui.add(light1, 'intensity', 0, 2, 0.01);
 
-gui.add(light1, 'intensity', 0, 2, 0.01);
+  const posFolder = gui.addFolder('LunaPos');
+  posFolder.add(luna.position, 'x', -10, 10).onChange(updateLunaPos);
+  posFolder.add(luna.position, 'y', -2, 10).onChange(updateLunaPos);
+  posFolder.add(luna.position, 'z', -30, 0).onChange(updateLunaPos);
+  posFolder.open();
 
-const posFolder = gui.addFolder('LunaPos');
-posFolder.add(luna.position, 'x', -10, 10).onChange(updateLuna);
-posFolder.add(luna.position, 'y', -2, 10).onChange(updateLuna);
-posFolder.add(luna.position, 'z', -30, 0).onChange(updateLuna);
-posFolder.open();
-
-const rotFolder = gui.addFolder('LunaRot');
-rotFolder.add(eulerLunaRot, 'x', -Math.PI, Math.PI).onChange(updateLunaRot);
-rotFolder.add(eulerLunaRot, 'y', -Math.PI, Math.PI).onChange(updateLunaRot);
-rotFolder.add(eulerLunaRot, 'z', -Math.PI, Math.PI).onChange(updateLunaRot);
-rotFolder.open();
+  const rotFolder = gui.addFolder('LunaRot');
+  rotFolder.add(eulerLunaRot, 'x', -Math.PI, Math.PI).onChange(updateLunaRot);
+  rotFolder.add(eulerLunaRot, 'y', -Math.PI, Math.PI).onChange(updateLunaRot);
+  rotFolder.add(eulerLunaRot, 'z', -Math.PI, Math.PI).onChange(updateLunaRot);
+  rotFolder.open();
+  */
+}
+creaGui()
 
 // ----fin------------------------------------------- helper GUI 
 
