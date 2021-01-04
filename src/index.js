@@ -582,7 +582,8 @@ setTimeout (function() { globals.mueveCamara(5) }, 70000);
 
 setTimeout(myURL, 80000);
 function myURL(){
-  window.location.href = "http://n8.cara-cara.tv";
+  //window.location.href = "http://n8.cara-cara.tv";
+  window.location.href = "http://n8.suenosdistantes.com";
 }
 
 // ----fin------------------------------------------- helper GUI 
